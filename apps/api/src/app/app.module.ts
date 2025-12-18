@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from '../database/database.module';
+import { CommonModule } from '../common/common.module';
 import { HealthModule } from '../modules/health/health.module';
 import { CustomerCategoriesModule } from '../modules/customer-categories/customer-categories.module';
 import { TariffsModule } from '../modules/tariffs/tariffs.module';
@@ -19,10 +20,12 @@ import { InstallmentsModule } from '../modules/installments/installments.module'
 import { DisconnectionsModule } from '../modules/disconnections/disconnections.module';
 import { PrepaidModule } from '../modules/prepaid/prepaid.module';
 import { CustomerPortalModule } from '../modules/customer-portal/customer-portal.module';
+import { POSModule } from '../modules/pos/pos.module';
 
 @Module({
   imports: [
     DatabaseModule,
+    CommonModule,
     HealthModule,
     CustomerCategoriesModule,
     TariffsModule,
@@ -40,6 +43,7 @@ import { CustomerPortalModule } from '../modules/customer-portal/customer-portal
     DisconnectionsModule,
     PrepaidModule,
     CustomerPortalModule,
+    POSModule,
   ],
   controllers: [AppController],
   providers: [AppService],
