@@ -17,6 +17,8 @@ import { ReportsModule } from '../modules/reports/reports.module';
 import { SubscriptionRequestsModule } from '../modules/subscription-requests/subscription-requests.module';
 import { InstallmentsModule } from '../modules/installments/installments.module';
 import { DisconnectionsModule } from '../modules/disconnections/disconnections.module';
+import { PrepaidModule } from '../modules/prepaid/prepaid.module';
+import { CustomerPortalModule } from '../modules/customer-portal/customer-portal.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { DisconnectionsModule } from '../modules/disconnections/disconnections.m
     SubscriptionRequestsModule,
     InstallmentsModule,
     DisconnectionsModule,
+    PrepaidModule,
+    CustomerPortalModule,
   ],
   controllers: [AppController],
   providers: [AppService],
