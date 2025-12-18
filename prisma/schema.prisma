@@ -1,14 +1,446 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Prisma Schema for Billing System (07)
+// نظام العملاء والفوترة والتحصيل
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== تصنيفات العملاء ====================
+model BillCustomerCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(100)
+  nameEn      String?  @map("name_en") @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  customers BillCustomer[]
+  tariffs   BillTariff[]
+
+  @@map("bill_customer_categories")
+}
+
+// ==================== العملاء ====================
+model BillCustomer {
+  id             String    @id @default(uuid()) @db.Uuid
+  accountNo      String    @unique @map("account_no") @db.VarChar(20)
+  name           String    @db.VarChar(200)
+  nameEn         String?   @map("name_en") @db.VarChar(200)
+  categoryId     String    @map("category_id") @db.Uuid
+  idType         String    @map("id_type") @db.VarChar(50) // national_id, iqama, cr
+  idNumber       String    @map("id_number") @db.VarChar(50)
+  phone          String    @db.VarChar(20)
+  mobile         String?   @db.VarChar(20)
+  email          String?   @db.VarChar(100)
+  address        String    @db.Text
+  city           String?   @db.VarChar(100)
+  district       String?   @db.VarChar(100)
+  latitude       Decimal?  @db.Decimal(10, 8)
+  longitude      Decimal?  @db.Decimal(11, 8)
+  stationId      String?   @map("station_id") @db.Uuid
+  transformerId  String?   @map("transformer_id") @db.Uuid
+  creditLimit    Decimal   @default(0) @map("credit_limit") @db.Decimal(15, 2)
+  paymentTerms   String    @default("postpaid") @map("payment_terms") @db.VarChar(20)
+  billingCycle   String    @default("monthly") @map("billing_cycle") @db.VarChar(20)
+  status         String    @default("active") @db.VarChar(20) // active, suspended, disconnected, closed
+  connectionDate DateTime? @map("connection_date")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  category   BillCustomerCategory @relation(fields: [categoryId], references: [id])
+  contracts  BillContract[]
+  meters     BillMeter[]
+  invoices   BillInvoice[]
+  payments   BillPayment[]
+  complaints BillComplaint[]
+  addresses  BillCustomerAddress[]
+  contacts   BillCustomerContact[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@map("bill_customers")
+}
+
+// ==================== عناوين العملاء ====================
+model BillCustomerAddress {
+  id          String   @id @default(uuid()) @db.Uuid
+  customerId  String   @map("customer_id") @db.Uuid
+  addressType String   @map("address_type") @db.VarChar(50) // billing, service, mailing
+  address     String   @db.Text
+  city        String?  @db.VarChar(100)
+  district    String?  @db.VarChar(100)
+  postalCode  String?  @map("postal_code") @db.VarChar(20)
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@map("bill_customer_addresses")
+}
+
+// ==================== جهات اتصال العملاء ====================
+model BillCustomerContact {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  name       String   @db.VarChar(100)
+  position   String?  @db.VarChar(100)
+  phone      String?  @db.VarChar(20)
+  mobile     String?  @db.VarChar(20)
+  email      String?  @db.VarChar(100)
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@map("bill_customer_contacts")
+}
+
+// ==================== العقود ====================
+model BillContract {
+  id                String    @id @default(uuid()) @db.Uuid
+  contractNo        String    @unique @map("contract_no") @db.VarChar(30)
+  customerId        String    @map("customer_id") @db.Uuid
+  startDate         DateTime  @map("start_date")
+  endDate           DateTime? @map("end_date")
+  contractType      String    @default("permanent") @map("contract_type") @db.VarChar(50) // permanent, temporary
+  loadKw            Decimal   @default(0) @map("load_kw") @db.Decimal(10, 2)
+  depositAmount     Decimal   @default(0) @map("deposit_amount") @db.Decimal(15, 2)
+  guaranteeAmount   Decimal   @default(0) @map("guarantee_amount") @db.Decimal(15, 2)
+  status            String    @default("active") @db.VarChar(20) // draft, active, suspended, terminated, expired
+  terms             String?   @db.Text
+  notes             String?   @db.Text
+  terminatedAt      DateTime? @map("terminated_at")
+  terminationReason String?   @map("termination_reason") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bill_contracts")
+}
+
+// ==================== أنواع العدادات ====================
+model BillMeterType {
+  id           String   @id @default(uuid()) @db.Uuid
+  code         String   @unique @db.VarChar(20)
+  name         String   @db.VarChar(100)
+  nameEn       String?  @map("name_en") @db.VarChar(100)
+  description  String?  @db.Text
+  phases       Int      @default(1) // 1 = single phase, 3 = three phase
+  isSmartMeter Boolean  @default(false) @map("is_smart_meter")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  meters BillMeter[]
+
+  @@map("bill_meter_types")
+}
+
+// ==================== العدادات ====================
+model BillMeter {
+  id            String    @id @default(uuid()) @db.Uuid
+  meterNo       String    @unique @map("meter_no") @db.VarChar(50)
+  customerId    String?   @map("customer_id") @db.Uuid
+  meterTypeId   String    @map("meter_type_id") @db.Uuid
+  manufacturer  String?   @db.VarChar(100)
+  model         String?   @db.VarChar(100)
+  serialNumber  String?   @map("serial_number") @db.VarChar(100)
+  installDate   DateTime? @map("install_date")
+  lastReadDate  DateTime? @map("last_read_date")
+  lastReading   Decimal   @default(0) @map("last_reading") @db.Decimal(15, 2)
+  multiplier    Decimal   @default(1) @db.Decimal(5, 2)
+  status        String    @default("active") @db.VarChar(20) // active, faulty, replaced, removed, in_stock
+  location      String?   @db.Text
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  customer   BillCustomer?      @relation(fields: [customerId], references: [id])
+  meterType  BillMeterType      @relation(fields: [meterTypeId], references: [id])
+  readings   BillMeterReading[]
+  complaints BillComplaint[]
+
+  @@index([customerId])
+  @@index([meterTypeId])
+  @@index([status])
+  @@map("bill_meters")
+}
+
+// ==================== قراءات العدادات ====================
+model BillMeterReading {
+  id              String   @id @default(uuid()) @db.Uuid
+  meterId         String   @map("meter_id") @db.Uuid
+  readingDate     DateTime @map("reading_date")
+  reading         Decimal  @db.Decimal(15, 2)
+  previousReading Decimal  @map("previous_reading") @db.Decimal(15, 2)
+  consumption     Decimal  @db.Decimal(15, 2)
+  readingType     String   @map("reading_type") @db.VarChar(30) // normal, estimated, final, initial
+  readerId        String?  @map("reader_id") @db.Uuid
+  imageUrl        String?  @map("image_url") @db.VarChar(500)
+  notes           String?  @db.Text
+  billingPeriod   String   @map("billing_period") @db.VarChar(7) // YYYY-MM
+  isProcessed     Boolean  @default(false) @map("is_processed")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  meter BillMeter @relation(fields: [meterId], references: [id])
+
+  @@index([meterId])
+  @@index([billingPeriod])
+  @@index([readingDate])
+  @@map("bill_meter_readings")
+}
+
+// ==================== شرائح التعرفة ====================
+model BillTariff {
+  id            String    @id @default(uuid()) @db.Uuid
+  categoryId    String    @map("category_id") @db.Uuid
+  name          String    @db.VarChar(100)
+  nameEn        String?   @map("name_en") @db.VarChar(100)
+  sliceOrder    Int       @map("slice_order") // ترتيب الشريحة
+  fromKwh       Decimal   @map("from_kwh") @db.Decimal(15, 2)
+  toKwh         Decimal?  @map("to_kwh") @db.Decimal(15, 2)
+  ratePerKwh    Decimal   @map("rate_per_kwh") @db.Decimal(10, 4)
+  fixedCharge   Decimal   @default(0) @map("fixed_charge") @db.Decimal(15, 2)
+  effectiveFrom DateTime  @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  category BillCustomerCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@map("bill_tariffs")
+}
+
+// ==================== الفواتير ====================
+model BillInvoice {
+  id                String    @id @default(uuid()) @db.Uuid
+  invoiceNo         String    @unique @map("invoice_no") @db.VarChar(30)
+  customerId        String    @map("customer_id") @db.Uuid
+  billingPeriod     String    @map("billing_period") @db.VarChar(7) // YYYY-MM
+  fromDate          DateTime  @map("from_date")
+  toDate            DateTime  @map("to_date")
+  previousReading   Decimal   @map("previous_reading") @db.Decimal(15, 2)
+  currentReading    Decimal   @map("current_reading") @db.Decimal(15, 2)
+  consumption       Decimal   @db.Decimal(15, 2)
+  consumptionAmount Decimal   @map("consumption_amount") @db.Decimal(15, 2)
+  fixedCharges      Decimal   @default(0) @map("fixed_charges") @db.Decimal(15, 2)
+  otherCharges      Decimal   @default(0) @map("other_charges") @db.Decimal(15, 2)
+  subtotal          Decimal   @db.Decimal(15, 2)
+  vatRate           Decimal   @default(15) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount         Decimal   @map("vat_amount") @db.Decimal(15, 2)
+  totalAmount       Decimal   @map("total_amount") @db.Decimal(15, 2)
+  dueDate           DateTime  @map("due_date")
+  status            String    @default("issued") @db.VarChar(20) // draft, issued, paid, partial, overdue, cancelled
+  paidAmount        Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  balance           Decimal   @db.Decimal(15, 2)
+  issuedAt          DateTime  @default(now()) @map("issued_at")
+  paidAt            DateTime? @map("paid_at")
+  cancelledAt       DateTime? @map("cancelled_at")
+  cancelReason      String?   @map("cancel_reason") @db.Text
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  customer   BillCustomer      @relation(fields: [customerId], references: [id])
+  items      BillInvoiceItem[]
+  payments   BillPayment[]
+  complaints BillComplaint[]
+
+  @@index([customerId])
+  @@index([billingPeriod])
+  @@index([status])
+  @@index([dueDate])
+  @@map("bill_invoices")
+}
+
+// ==================== تفاصيل الفاتورة ====================
+model BillInvoiceItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  description String   @db.VarChar(200)
+  itemType    String   @map("item_type") @db.VarChar(50) // consumption, fixed_charge, other
+  fromKwh     Decimal? @map("from_kwh") @db.Decimal(15, 2)
+  toKwh       Decimal? @map("to_kwh") @db.Decimal(15, 2)
+  quantity    Decimal  @db.Decimal(15, 2)
+  rate        Decimal  @db.Decimal(10, 4)
+  amount      Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  invoice BillInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("bill_invoice_items")
+}
+
+// ==================== المدفوعات ====================
+model BillPayment {
+  id            String    @id @default(uuid()) @db.Uuid
+  paymentNo     String    @unique @map("payment_no") @db.VarChar(30)
+  customerId    String    @map("customer_id") @db.Uuid
+  invoiceId     String?   @map("invoice_id") @db.Uuid
+  paymentDate   DateTime  @default(now()) @map("payment_date")
+  amount        Decimal   @db.Decimal(15, 2)
+  paymentMethod String    @map("payment_method") @db.VarChar(30) // cash, bank, card, online
+  referenceNo   String?   @map("reference_no") @db.VarChar(100)
+  bankId        String?   @map("bank_id") @db.Uuid
+  status        String    @default("confirmed") @db.VarChar(20) // pending, confirmed, cancelled
+  receivedBy    String?   @map("received_by") @db.Uuid
+  cancelledAt   DateTime? @map("cancelled_at")
+  cancelReason  String?   @map("cancel_reason") @db.Text
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+  invoice  BillInvoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@index([status])
+  @@map("bill_payments")
+}
+
+// ==================== الشكاوى ====================
+model BillComplaint {
+  id               String    @id @default(uuid()) @db.Uuid
+  complaintNo      String    @unique @map("complaint_no") @db.VarChar(30)
+  customerId       String    @map("customer_id") @db.Uuid
+  type             String    @db.VarChar(50) // billing, meter, service, technical, other
+  subject          String    @db.VarChar(200)
+  description      String    @db.Text
+  priority         String    @default("medium") @db.VarChar(20) // low, medium, high, urgent
+  status           String    @default("open") @db.VarChar(20) // open, in_progress, resolved, closed
+  relatedInvoiceId String?   @map("related_invoice_id") @db.Uuid
+  relatedMeterId   String?   @map("related_meter_id") @db.Uuid
+  assignedTo       String?   @map("assigned_to") @db.Uuid
+  response         String?   @db.Text
+  resolution       String?   @db.Text
+  internalNotes    String?   @map("internal_notes") @db.Text
+  resolvedAt       DateTime? @map("resolved_at")
+  closedAt         DateTime? @map("closed_at")
+  attachments      String[]  @default([])
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  customer       BillCustomer  @relation(fields: [customerId], references: [id])
+  relatedInvoice BillInvoice?  @relation(fields: [relatedInvoiceId], references: [id])
+  relatedMeter   BillMeter?    @relation(fields: [relatedMeterId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@index([type])
+  @@index([priority])
+  @@map("bill_complaints")
+}
+
+// ==================== طلبات الاشتراك ====================
+model BillSubscriptionRequest {
+  id                 String    @id @default(uuid()) @db.Uuid
+  requestNo          String    @unique @map("request_no") @db.VarChar(30)
+  customerName       String    @map("customer_name") @db.VarChar(200)
+  customerType       String    @map("customer_type") @db.VarChar(50)
+  idType             String?   @map("id_type") @db.VarChar(50)
+  idNumber           String?   @map("id_number") @db.VarChar(50)
+  phone              String?   @db.VarChar(20)
+  mobile             String    @db.VarChar(20)
+  email              String?   @db.VarChar(100)
+  address            String?   @db.Text
+  city               String?   @db.VarChar(100)
+  district           String?   @db.VarChar(100)
+  latitude           Decimal?  @db.Decimal(10, 8)
+  longitude          Decimal?  @db.Decimal(11, 8)
+  subscriptionFee    Decimal?  @map("subscription_fee") @db.Decimal(15, 2)
+  connectionFee      Decimal?  @map("connection_fee") @db.Decimal(15, 2)
+  depositAmount      Decimal?  @map("deposit_amount") @db.Decimal(15, 2)
+  totalAmount        Decimal?  @map("total_amount") @db.Decimal(15, 2)
+  paymentStatus      String    @default("pending") @map("payment_status") @db.VarChar(20)
+  paidAmount         Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  paymentDate        DateTime? @map("payment_date")
+  paymentReference   String?   @map("payment_reference") @db.VarChar(100)
+  status             String    @default("pending_review") @db.VarChar(30)
+  customerId         String?   @map("customer_id") @db.Uuid
+  assignedTechnician String?   @map("assigned_technician") @db.Uuid
+  meterSerialNumber  String?   @map("meter_serial_number") @db.VarChar(100)
+  requestDate        DateTime  @default(now()) @map("request_date")
+  approvalDate       DateTime? @map("approval_date")
+  installationDate   DateTime? @map("installation_date")
+  completionDate     DateTime? @map("completion_date")
+  approvedBy         String?   @map("approved_by") @db.Uuid
+  rejectionReason    String?   @map("rejection_reason") @db.Text
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@map("bill_subscription_requests")
+}
+
+// ==================== سجل التدقيق ====================
+model BillAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tableName  String   @map("table_name") @db.VarChar(100)
+  recordId   String   @map("record_id") @db.Uuid
+  action     String   @db.VarChar(20) // create, update, delete
+  oldData    Json?    @map("old_data")
+  newData    Json?    @map("new_data")
+  userId     String?  @map("user_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(50)
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tableName])
+  @@index([recordId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("bill_audit_logs")
+}
+
+// ==================== إعدادات النظام ====================
+model BillSystemSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       String   @db.Text
+  description String?  @db.Text
+  dataType    String   @map("data_type") @db.VarChar(20) // string, number, boolean, json
+  isEditable  Boolean  @default(true) @map("is_editable")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("bill_system_settings")
+}
+
+// ==================== تسلسل الأرقام ====================
+model BillSequence {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  prefix      String   @db.VarChar(10)
+  currentNo   Int      @default(0) @map("current_no")
+  padLength   Int      @default(6) @map("pad_length")
+  resetPeriod String?  @map("reset_period") @db.VarChar(20) // yearly, monthly, never
+  lastReset   DateTime? @map("last_reset")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("bill_sequences")
 }
