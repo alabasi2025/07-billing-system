@@ -5,6 +5,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from '../database/database.module';
 import { CommonModule } from '../common/common.module';
+import { AuthModule } from '../modules/auth/auth.module';
+import { JwtAuthGuard } from '../modules/auth/jwt-auth.guard';
+import { RolesGuard } from '../modules/auth/roles.guard';
 import { HealthModule } from '../modules/health/health.module';
 import { CustomerCategoriesModule } from '../modules/customer-categories/customer-categories.module';
 import { TariffsModule } from '../modules/tariffs/tariffs.module';
@@ -23,6 +26,8 @@ import { DisconnectionsModule } from '../modules/disconnections/disconnections.m
 import { PrepaidModule } from '../modules/prepaid/prepaid.module';
 import { CustomerPortalModule } from '../modules/customer-portal/customer-portal.module';
 import { POSModule } from '../modules/pos/pos.module';
+import { EventsModule } from '../modules/events/events.module';
+import { AccountingModule } from '../modules/accounting/accounting.module';
 
 @Module({
   imports: [
@@ -31,6 +36,12 @@ import { POSModule } from '../modules/pos/pos.module';
       ttl: 60000,
       limit: 100,
     }]),
+    // Authentication - JWT validation from Core System (01)
+    AuthModule,
+    // Event Publishing for cross-system integration
+    EventsModule,
+    // Double-Entry Bookkeeping (القيد المزدوج)
+    AccountingModule,
     DatabaseModule,
     CommonModule,
     HealthModule,
@@ -55,9 +66,20 @@ import { POSModule } from '../modules/pos/pos.module';
   controllers: [AppController],
   providers: [
     AppService,
+    // Global Rate Limiting Guard
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    // Global JWT Authentication Guard (RBAC)
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    // Global Roles Guard (RBAC)
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

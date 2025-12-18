@@ -1,10 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { Public } from '../auth/public.decorator';
 
 @Controller('api/v1/health')
 export class HealthController {
   constructor(private prisma: PrismaService) {}
 
+  @Public()
   @Get()
   async check() {
     const dbStatus = await this.checkDatabase();
