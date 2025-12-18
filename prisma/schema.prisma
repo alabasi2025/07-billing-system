@@ -285,6 +285,7 @@ model BillInvoice {
   issuedAt          DateTime  @default(now()) @map("issued_at")
   paidAt            DateTime? @map("paid_at")
   cancelledAt       DateTime? @map("cancelled_at")
+  deletedAt         DateTime? @map("deleted_at")
   cancelReason      String?   @map("cancel_reason") @db.Text
   notes             String?   @db.Text
   createdAt         DateTime  @default(now()) @map("created_at")

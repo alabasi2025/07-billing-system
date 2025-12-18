@@ -55,7 +55,7 @@ export class SequenceService {
   async initializeSequence(
     name: string,
     prefix: string,
-    padLength: number = 6,
+    padLength = 6,
     resetPeriod?: string
   ): Promise<void> {
     await this.prisma.billSequence.upsert({

@@ -289,7 +289,7 @@ export class DisconnectionsService {
     };
   }
 
-  async getCustomersForDisconnection(minOverdueDays: number = 30) {
+  async getCustomersForDisconnection(minOverdueDays = 30) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - minOverdueDays);
 
