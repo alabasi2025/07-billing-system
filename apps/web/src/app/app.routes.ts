@@ -96,6 +96,12 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/reports/components/reports-dashboard.component').then(m => m.ReportsDashboardComponent),
         title: 'التقارير'
       },
+      // POS
+      {
+        path: 'pos',
+        loadComponent: () => import('./features/pos/pos.component').then(m => m.POSComponent),
+        title: 'نقاط البيع'
+      },
       // Settings
       {
         path: 'settings',
