@@ -61,6 +61,21 @@ import { MessageService } from 'primeng/api';
             <i class="pi pi-shopping-cart ml-3"></i>
             <span>نقاط البيع</span>
           </a>
+          <a routerLink="/pos-terminals" routerLinkActive="bg-blue-800"
+             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
+            <i class="pi pi-desktop ml-3"></i>
+            <span>إدارة نقاط البيع</span>
+          </a>
+          <a routerLink="/debts" routerLinkActive="bg-blue-800"
+             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
+            <i class="pi pi-exclamation-triangle ml-3"></i>
+            <span>إدارة الديون</span>
+          </a>
+          <a routerLink="/payment-plans" routerLinkActive="bg-blue-800"
+             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
+            <i class="pi pi-calendar ml-3"></i>
+            <span>خطط السداد</span>
+          </a>
           <a routerLink="/settings" routerLinkActive="bg-blue-800"
              class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
             <i class="pi pi-cog ml-3"></i>

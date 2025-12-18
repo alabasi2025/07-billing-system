@@ -254,6 +254,7 @@ model BillTariff {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   category BillCustomerCategory @relation(fields: [categoryId], references: [id])
+  tiers    BillTariffTier[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -734,4 +735,305 @@ model BillServiceRequest {
   customer BillCustomer @relation(fields: [customerId], references: [id])
 
   @@map("bill_service_requests")
+}
+
+
+// ==================== نقاط البيع (POS Terminals) ====================
+model BillPosTerminal {
+  id              String    @id @default(uuid()) @db.Uuid
+  terminalCode    String    @unique @map("terminal_code") @db.VarChar(20)
+  terminalName    String    @map("terminal_name") @db.VarChar(100)
+  locationId      String?   @map("location_id") @db.Uuid
+  locationName    String?   @map("location_name") @db.VarChar(100)
+  status          String    @default("active") @db.VarChar(20) // active, inactive, maintenance
+  assignedUserId  String?   @map("assigned_user_id") @db.Uuid
+  printerType     String    @default("thermal") @map("printer_type") @db.VarChar(20) // thermal, laser, none
+  printerIp       String?   @map("printer_ip") @db.VarChar(50)
+  openingBalance  Decimal   @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  currentBalance  Decimal   @default(0) @map("current_balance") @db.Decimal(15, 2)
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  sessions BillPosSession[]
+
+  @@index([status])
+  @@map("bill_pos_terminals")
+}
+
+// ==================== جلسات نقاط البيع (POS Sessions) ====================
+model BillPosSession {
+  id                  String    @id @default(uuid()) @db.Uuid
+  terminalId          String    @map("terminal_id") @db.Uuid
+  sessionNumber       String    @unique @map("session_number") @db.VarChar(30)
+  cashierId           String    @map("cashier_id") @db.Uuid
+  openedAt            DateTime  @default(now()) @map("opened_at")
+  closedAt            DateTime? @map("closed_at")
+  openingCash         Decimal   @default(0) @map("opening_cash") @db.Decimal(15, 2)
+  closingCash         Decimal?  @map("closing_cash") @db.Decimal(15, 2)
+  expectedCash        Decimal?  @map("expected_cash") @db.Decimal(15, 2)
+  cashDifference      Decimal?  @map("cash_difference") @db.Decimal(15, 2)
+  totalCashReceived   Decimal   @default(0) @map("total_cash_received") @db.Decimal(15, 2)
+  totalCardReceived   Decimal   @default(0) @map("total_card_received") @db.Decimal(15, 2)
+  totalTransactions   Int       @default(0) @map("total_transactions")
+  status              String    @default("open") @db.VarChar(20) // open, closed, reconciled
+  openingNotes        String?   @map("opening_notes") @db.Text
+  closingNotes        String?   @map("closing_notes") @db.Text
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  terminal     BillPosTerminal     @relation(fields: [terminalId], references: [id])
+  transactions BillPosTransaction[]
+
+  @@index([terminalId])
+  @@index([cashierId])
+  @@index([status])
+  @@map("bill_pos_sessions")
+}
+
+// ==================== معاملات نقاط البيع (POS Transactions) ====================
+model BillPosTransaction {
+  id                  String    @id @default(uuid()) @db.Uuid
+  sessionId           String    @map("session_id") @db.Uuid
+  transactionNumber   String    @unique @map("transaction_number") @db.VarChar(30)
+  customerId          String    @map("customer_id") @db.Uuid
+  invoiceId           String?   @map("invoice_id") @db.Uuid
+  transactionType     String    @map("transaction_type") @db.VarChar(30) // invoice_payment, advance_payment, deposit, refund, adjustment
+  amount              Decimal   @db.Decimal(15, 2)
+  paymentMethod       String    @default("cash") @map("payment_method") @db.VarChar(20) // cash, card, check, mixed
+  cashAmount          Decimal   @default(0) @map("cash_amount") @db.Decimal(15, 2)
+  cardAmount          Decimal   @default(0) @map("card_amount") @db.Decimal(15, 2)
+  checkAmount         Decimal   @default(0) @map("check_amount") @db.Decimal(15, 2)
+  cardLastFour        String?   @map("card_last_four") @db.VarChar(4)
+  cardApprovalCode    String?   @map("card_approval_code") @db.VarChar(20)
+  checkNumber         String?   @map("check_number") @db.VarChar(50)
+  checkBank           String?   @map("check_bank") @db.VarChar(100)
+  checkDate           DateTime? @map("check_date")
+  amountTendered      Decimal?  @map("amount_tendered") @db.Decimal(15, 2)
+  changeGiven         Decimal?  @map("change_given") @db.Decimal(15, 2)
+  receiptNumber       String?   @map("receipt_number") @db.VarChar(30)
+  receiptPrinted      Boolean   @default(false) @map("receipt_printed")
+  journalEntryId      String?   @map("journal_entry_id") @db.Uuid
+  transactionTime     DateTime  @default(now()) @map("transaction_time")
+  status              String    @default("completed") @db.VarChar(20) // completed, voided, pending
+  voidReason          String?   @map("void_reason") @db.Text
+  voidedBy            String?   @map("voided_by") @db.Uuid
+  voidedAt            DateTime? @map("voided_at")
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  session BillPosSession @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([status])
+  @@map("bill_pos_transactions")
+}
+
+// ==================== شرائح التعرفة التفصيلية ====================
+model BillTariffTier {
+  id            String   @id @default(uuid()) @db.Uuid
+  tariffId      String   @map("tariff_id") @db.Uuid
+  tierOrder     Int      @map("tier_order")
+  fromUnits     Decimal  @map("from_units") @db.Decimal(15, 2)
+  toUnits       Decimal? @map("to_units") @db.Decimal(15, 2)
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(10, 4)
+  fixedCharge   Decimal  @default(0) @map("fixed_charge") @db.Decimal(15, 2)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tariff BillTariff @relation(fields: [tariffId], references: [id])
+
+  @@index([tariffId])
+  @@map("bill_tariff_tiers")
+}
+
+// ==================== دورات الفوترة ====================
+model BillBillingCycle {
+  id            String    @id @default(uuid()) @db.Uuid
+  cycleCode     String    @unique @map("cycle_code") @db.VarChar(20)
+  cycleName     String    @map("cycle_name") @db.VarChar(100)
+  cycleType     String    @map("cycle_type") @db.VarChar(20) // monthly, quarterly, yearly
+  startDay      Int       @map("start_day") // يوم بداية الدورة
+  endDay        Int       @map("end_day") // يوم نهاية الدورة
+  dueDay        Int       @map("due_day") // يوم استحقاق الدفع
+  gracePeriod   Int       @default(0) @map("grace_period") // فترة السماح بالأيام
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("bill_billing_cycles")
+}
+
+// ==================== الديون ====================
+model BillDebt {
+  id              String    @id @default(uuid()) @db.Uuid
+  customerId      String    @map("customer_id") @db.Uuid
+  debtType        String    @map("debt_type") @db.VarChar(50) // invoice, penalty, reconnection, other
+  referenceId     String?   @map("reference_id") @db.Uuid
+  originalAmount  Decimal   @map("original_amount") @db.Decimal(15, 2)
+  paidAmount      Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  remainingAmount Decimal   @map("remaining_amount") @db.Decimal(15, 2)
+  dueDate         DateTime? @map("due_date")
+  penaltyAmount   Decimal   @default(0) @map("penalty_amount") @db.Decimal(15, 2)
+  interestAmount  Decimal   @default(0) @map("interest_amount") @db.Decimal(15, 2)
+  status          String    @default("outstanding") @db.VarChar(20) // outstanding, partial, paid, written_off, disputed
+  paymentPlanId   String?   @map("payment_plan_id") @db.Uuid
+  notes           String?   @db.Text
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bill_debts")
+}
+
+// ==================== خطط السداد ====================
+model BillPaymentPlan {
+  id                    String    @id @default(uuid()) @db.Uuid
+  planNumber            String    @unique @map("plan_number") @db.VarChar(50)
+  customerId            String    @map("customer_id") @db.Uuid
+  totalAmount           Decimal   @map("total_amount") @db.Decimal(15, 2)
+  downPayment           Decimal   @default(0) @map("down_payment") @db.Decimal(15, 2)
+  remainingAmount       Decimal   @map("remaining_amount") @db.Decimal(15, 2)
+  numberOfInstallments  Int       @map("number_of_installments")
+  installmentAmount     Decimal   @map("installment_amount") @db.Decimal(15, 2)
+  startDate             DateTime  @map("start_date")
+  endDate               DateTime? @map("end_date")
+  interestRate          Decimal   @default(0) @map("interest_rate") @db.Decimal(5, 2)
+  penaltyOnLate         Decimal   @default(0) @map("penalty_on_late") @db.Decimal(15, 2)
+  status                String    @default("active") @db.VarChar(20) // active, completed, defaulted, cancelled
+  approvedBy            String?   @map("approved_by") @db.Uuid
+  approvedAt            DateTime? @map("approved_at")
+  notes                 String?   @db.Text
+  isDeleted             Boolean   @default(false) @map("is_deleted")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  installments BillPaymentPlanInstallment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bill_payment_plans")
+}
+
+// ==================== أقساط خطة السداد ====================
+model BillPaymentPlanInstallment {
+  id                String    @id @default(uuid()) @db.Uuid
+  planId            String    @map("plan_id") @db.Uuid
+  installmentNumber Int       @map("installment_number")
+  dueDate           DateTime  @map("due_date")
+  amount            Decimal   @db.Decimal(15, 2)
+  paidAmount        Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  paidDate          DateTime? @map("paid_date")
+  paymentId         String?   @map("payment_id") @db.Uuid
+  status            String    @default("pending") @db.VarChar(20) // pending, paid, overdue, partial
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  plan BillPaymentPlan @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+  @@index([status])
+  @@map("bill_payment_plan_installments")
+}
+
+// ==================== بوابات الدفع ====================
+model BillPaymentGateway {
+  id              String    @id @default(uuid()) @db.Uuid
+  gatewayCode     String    @unique @map("gateway_code") @db.VarChar(20)
+  gatewayName     String    @map("gateway_name") @db.VarChar(100)
+  gatewayType     String    @map("gateway_type") @db.VarChar(50) // visa, mastercard, mada, apple_pay, wallet
+  apiUrl          String?   @map("api_url") @db.VarChar(500)
+  merchantId      String?   @map("merchant_id") @db.VarChar(100)
+  apiKey          String?   @map("api_key") @db.VarChar(500)
+  secretKey       String?   @map("secret_key") @db.VarChar(500)
+  isActive        Boolean   @default(true) @map("is_active")
+  feePercentage   Decimal   @default(0) @map("fee_percentage") @db.Decimal(5, 2)
+  feeFixed        Decimal   @default(0) @map("fee_fixed") @db.Decimal(15, 2)
+  settings        String?   @db.Text // JSON settings
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  onlinePayments BillOnlinePayment[]
+
+  @@map("bill_payment_gateways")
+}
+
+// ==================== المدفوعات الإلكترونية ====================
+model BillOnlinePayment {
+  id                    String    @id @default(uuid()) @db.Uuid
+  paymentNumber         String    @unique @map("payment_number") @db.VarChar(50)
+  customerId            String    @map("customer_id") @db.Uuid
+  gatewayId             String    @map("gateway_id") @db.Uuid
+  invoiceId             String?   @map("invoice_id") @db.Uuid
+  amount                Decimal   @db.Decimal(15, 2)
+  currency              String    @default("SDG") @db.VarChar(3)
+  gatewayTransactionId  String?   @map("gateway_transaction_id") @db.VarChar(100)
+  gatewayResponse       String?   @map("gateway_response") @db.Text // JSON response
+  status                String    @default("pending") @db.VarChar(20) // pending, processing, completed, failed, cancelled, refunded
+  paymentUrl            String?   @map("payment_url") @db.VarChar(500)
+  callbackUrl           String?   @map("callback_url") @db.VarChar(500)
+  initiatedAt           DateTime  @default(now()) @map("initiated_at")
+  completedAt           DateTime? @map("completed_at")
+  failureReason         String?   @map("failure_reason") @db.Text
+  isDeleted             Boolean   @default(false) @map("is_deleted")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  gateway BillPaymentGateway @relation(fields: [gatewayId], references: [id])
+
+  @@index([customerId])
+  @@index([gatewayId])
+  @@index([status])
+  @@map("bill_online_payments")
+}
+
+// ==================== قوالب الإشعارات ====================
+model BillNotificationTemplate {
+  id            String   @id @default(uuid()) @db.Uuid
+  templateCode  String   @unique @map("template_code") @db.VarChar(50)
+  templateName  String   @map("template_name") @db.VarChar(100)
+  templateType  String   @map("template_type") @db.VarChar(20) // sms, email, push
+  eventType     String   @map("event_type") @db.VarChar(50) // invoice_created, payment_received, due_reminder, etc.
+  subject       String?  @db.VarChar(200)
+  bodyTemplate  String   @map("body_template") @db.Text
+  variables     String?  @db.Text // JSON array of available variables
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  notifications BillNotification[]
+
+  @@map("bill_notification_templates")
+}
+
+// ==================== الإشعارات ====================
+model BillNotification {
+  id            String    @id @default(uuid()) @db.Uuid
+  templateId    String    @map("template_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  recipient     String    @db.VarChar(200) // phone, email, or device token
+  subject       String?   @db.VarChar(200)
+  body          String    @db.Text
+  status        String    @default("pending") @db.VarChar(20) // pending, sent, delivered, failed
+  sentAt        DateTime? @map("sent_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  failureReason String?   @map("failure_reason") @db.Text
+  retryCount    Int       @default(0) @map("retry_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  template BillNotificationTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bill_notifications")
 }

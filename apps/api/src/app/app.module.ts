@@ -28,6 +28,13 @@ import { CustomerPortalModule } from '../modules/customer-portal/customer-portal
 import { POSModule } from '../modules/pos/pos.module';
 import { EventsModule } from '../modules/events/events.module';
 import { AccountingModule } from '../modules/accounting/accounting.module';
+// New Modules
+import { PosTerminalsModule } from '../modules/pos-terminals/pos-terminals.module';
+import { PosSessionsModule } from '../modules/pos-sessions/pos-sessions.module';
+import { DebtsModule } from '../modules/debts/debts.module';
+import { PaymentPlansModule } from '../modules/payment-plans/payment-plans.module';
+import { BillingCyclesModule } from '../modules/billing-cycles/billing-cycles.module';
+import { NotificationsModule } from '../modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -62,6 +69,15 @@ import { AccountingModule } from '../modules/accounting/accounting.module';
     PrepaidModule,
     CustomerPortalModule,
     POSModule,
+    // New POS Management Modules
+    PosTerminalsModule,
+    PosSessionsModule,
+    // Debt Management Modules
+    DebtsModule,
+    PaymentPlansModule,
+    // Billing & Notifications
+    BillingCyclesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

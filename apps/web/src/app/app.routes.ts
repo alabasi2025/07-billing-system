@@ -102,6 +102,24 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/pos/pos.component').then(m => m.POSComponent),
         title: 'نقاط البيع'
       },
+      // POS Management
+      {
+        path: 'pos-terminals',
+        loadComponent: () => import('./features/pos-terminals/pos-terminals.component').then(m => m.PosTerminalsComponent),
+        title: 'إدارة نقاط البيع'
+      },
+      // Debts
+      {
+        path: 'debts',
+        loadComponent: () => import('./features/debts/debts.component').then(m => m.DebtsComponent),
+        title: 'إدارة الديون'
+      },
+      // Payment Plans
+      {
+        path: 'payment-plans',
+        loadComponent: () => import('./features/payment-plans/payment-plans.component').then(m => m.PaymentPlansComponent),
+        title: 'خطط السداد'
+      },
       // Settings
       {
         path: 'settings',
