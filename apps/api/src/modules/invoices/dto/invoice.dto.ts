@@ -123,3 +123,17 @@ export class InvoiceResponseDto {
     amount: number;
   }>;
 }
+
+export class BatchBillingDto {
+  @IsString()
+  @MaxLength(7)
+  billingPeriod: string; // YYYY-MM
+
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+}

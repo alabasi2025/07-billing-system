@@ -415,4 +415,113 @@ export class InvoicesService {
 
     return { updated: overdueInvoices.count };
   }
+
+  async getStatistics(params: { fromDate?: string; toDate?: string }) {
+    const where: any = {};
+
+    if (params.fromDate || params.toDate) {
+      where.issuedAt = {};
+      if (params.fromDate) {
+        where.issuedAt.gte = new Date(params.fromDate);
+      }
+      if (params.toDate) {
+        where.issuedAt.lte = new Date(params.toDate);
+      }
+    }
+
+    const [total, byStatus, totals] = await Promise.all([
+      this.prisma.billInvoice.count({ where }),
+      this.prisma.billInvoice.groupBy({
+        by: ['status'],
+        where,
+        _count: { id: true },
+      }),
+      this.prisma.billInvoice.aggregate({
+        where,
+        _sum: {
+          totalAmount: true,
+          paidAmount: true,
+          balance: true,
+          consumption: true,
+        },
+      }),
+    ]);
+
+    const statusMap: Record<string, number> = {};
+    byStatus.forEach((item) => {
+      statusMap[item.status] = item._count.id;
+    });
+
+    return {
+      total,
+      byStatus: statusMap,
+      totalAmount: Number(totals._sum.totalAmount) || 0,
+      paidAmount: Number(totals._sum.paidAmount) || 0,
+      balance: Number(totals._sum.balance) || 0,
+      totalConsumption: Number(totals._sum.consumption) || 0,
+    };
+  }
+
+  async batchBilling(dto: { billingPeriod: string; categoryId?: string; city?: string }) {
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as Array<{ customerId: string; error: string }>,
+      invoices: [] as string[],
+    };
+
+    // Get all active customers with pending readings
+    const customerWhere: any = {
+      status: 'active',
+    };
+
+    if (dto.categoryId) {
+      customerWhere.categoryId = dto.categoryId;
+    }
+
+    if (dto.city) {
+      customerWhere.city = dto.city;
+    }
+
+    const customers = await this.prisma.billCustomer.findMany({
+      where: customerWhere,
+      include: {
+        meters: {
+          where: { status: 'active' },
+          include: {
+            readings: {
+              where: {
+                billingPeriod: dto.billingPeriod,
+                isProcessed: false,
+              },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    for (const customer of customers) {
+      // Check if customer has a meter with pending reading
+      const meterWithReading = customer.meters.find((m) => m.readings.length > 0);
+      if (!meterWithReading) continue;
+
+      try {
+        const invoice = await this.generate({
+          customerId: customer.id,
+          billingPeriod: dto.billingPeriod,
+        });
+        results.success++;
+        results.invoices.push(invoice.invoiceNo);
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          customerId: customer.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return results;
+  }
 }

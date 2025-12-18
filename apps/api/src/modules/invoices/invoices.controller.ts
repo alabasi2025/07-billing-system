@@ -10,7 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
-import { GenerateInvoiceDto, CancelInvoiceDto, RebillInvoiceDto } from './dto/invoice.dto';
+import { GenerateInvoiceDto, CancelInvoiceDto, RebillInvoiceDto, BatchBillingDto } from './dto/invoice.dto';
 
 @Controller('api/v1/invoices')
 export class InvoicesController {
@@ -106,6 +106,29 @@ export class InvoicesController {
     return {
       success: true,
       message: `Updated ${result.updated} overdue invoices`,
+      data: result,
+    };
+  }
+
+  @Get('statistics/summary')
+  async getStatistics(
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const result = await this.service.getStatistics({ fromDate, toDate });
+    return {
+      success: true,
+      data: result,
+    };
+  }
+
+  @Post('batch-billing')
+  @HttpCode(HttpStatus.CREATED)
+  async batchBilling(@Body() dto: BatchBillingDto) {
+    const result = await this.service.batchBilling(dto);
+    return {
+      success: true,
+      message: `Batch billing completed: ${result.success} success, ${result.failed} failed`,
       data: result,
     };
   }
