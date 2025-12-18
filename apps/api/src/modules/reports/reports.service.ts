@@ -336,4 +336,362 @@ export class ReportsService {
     if (daysOverdue <= 90) return '61-90';
     return '90+';
   }
+
+  // تقرير الدعم الحكومي
+  async getSubsidyReport(params: { fromDate?: string; toDate?: string; categoryId?: string }) {
+    const { fromDate, toDate, categoryId } = params;
+
+    const where: any = {
+      isSubsidized: true,
+    };
+
+    if (categoryId) where.categoryId = categoryId;
+
+    const customers = await this.prisma.billCustomer.findMany({
+      where,
+      include: {
+        category: { select: { name: true } },
+      },
+    });
+
+    // حساب إجمالي الدعم من الفواتير
+    const invoiceWhere: any = {
+      customer: { isSubsidized: true },
+      status: { notIn: ['cancelled', 'draft'] },
+    };
+
+    if (fromDate || toDate) {
+      invoiceWhere.issuedAt = {};
+      if (fromDate) invoiceWhere.issuedAt.gte = new Date(fromDate);
+      if (toDate) invoiceWhere.issuedAt.lte = new Date(toDate);
+    }
+
+    const invoices = await this.prisma.billInvoice.findMany({
+      where: invoiceWhere,
+      include: {
+        customer: {
+          include: {
+            category: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    // تجميع بيانات الدعم
+    const grouped: Record<string, { customers: number; totalConsumption: number; totalAmount: number; subsidyAmount: number }> = {};
+
+    for (const invoice of invoices) {
+      const categoryName = invoice.customer.category?.name ?? 'غير محدد';
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = { customers: 0, totalConsumption: 0, totalAmount: 0, subsidyAmount: 0 };
+      }
+
+      // افتراض نسبة دعم ثابتة 50% للعملاء المدعومين
+      const subsidyPercentage = invoice.customer.isSubsidized ? 50 : 0;
+      const totalAmount = Number(invoice.totalAmount);
+      const subsidyAmount = (totalAmount * subsidyPercentage) / 100;
+
+      grouped[categoryName].totalConsumption += Number(invoice.consumption);
+      grouped[categoryName].totalAmount += totalAmount;
+      grouped[categoryName].subsidyAmount += subsidyAmount;
+    }
+
+    // إضافة عدد العملاء
+    for (const customer of customers) {
+      const categoryName = customer.category?.name ?? 'غير محدد';
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = { customers: 0, totalConsumption: 0, totalAmount: 0, subsidyAmount: 0 };
+      }
+      grouped[categoryName].customers += 1;
+    }
+
+    const data = Object.entries(grouped).map(([category, values]) => ({
+      category,
+      ...values,
+    }));
+
+    const totals = data.reduce(
+      (acc, item) => ({
+        customers: acc.customers + item.customers,
+        totalConsumption: acc.totalConsumption + item.totalConsumption,
+        totalAmount: acc.totalAmount + item.totalAmount,
+        subsidyAmount: acc.subsidyAmount + item.subsidyAmount,
+      }),
+      { customers: 0, totalConsumption: 0, totalAmount: 0, subsidyAmount: 0 }
+    );
+
+    return { data, totals };
+  }
+
+  // تقرير العدادات
+  async getMeterReport(params: { meterTypeId?: string; status?: string }) {
+    const { meterTypeId, status } = params;
+
+    const where: any = {};
+    if (meterTypeId) where.meterTypeId = meterTypeId;
+    if (status) where.status = status;
+
+    const meters = await this.prisma.billMeter.groupBy({
+      by: ['meterTypeId', 'status'],
+      where,
+      _count: true,
+    });
+
+    const meterTypes = await this.prisma.billMeterType.findMany({
+      select: { id: true, name: true },
+    });
+
+    const typeMap = new Map(meterTypes.map((t) => [t.id, t.name]));
+
+    const grouped: Record<string, Record<string, number>> = {};
+
+    for (const item of meters) {
+      const typeName = typeMap.get(item.meterTypeId) ?? 'غير محدد';
+      if (!grouped[typeName]) {
+        grouped[typeName] = { active: 0, inactive: 0, faulty: 0, replaced: 0 };
+      }
+      grouped[typeName][item.status] = item._count;
+    }
+
+    const data = Object.entries(grouped).map(([meterType, statuses]) => ({
+      meterType,
+      ...statuses,
+      total: Object.values(statuses).reduce((a, b) => a + b, 0),
+    }));
+
+    return { data };
+  }
+
+  // تقرير التحصيل
+  async getCollectionReport(params: { fromDate?: string; toDate?: string; paymentMethod?: string }) {
+    const { fromDate, toDate, paymentMethod } = params;
+
+    const where: any = {
+      status: 'confirmed',
+    };
+
+    if (fromDate || toDate) {
+      where.paymentDate = {};
+      if (fromDate) where.paymentDate.gte = new Date(fromDate);
+      if (toDate) where.paymentDate.lte = new Date(toDate);
+    }
+
+    if (paymentMethod) where.paymentMethod = paymentMethod;
+
+    const payments = await this.prisma.billPayment.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            category: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { paymentDate: 'asc' },
+    });
+
+    // تجميع حسب طريقة الدفع
+    const byMethod: Record<string, { count: number; amount: number }> = {};
+    const byCategory: Record<string, { count: number; amount: number }> = {};
+    const byDate: Record<string, { count: number; amount: number }> = {};
+
+    for (const payment of payments) {
+      const method = payment.paymentMethod;
+      const category = payment.customer.category?.name ?? 'غير محدد';
+      const date = payment.paymentDate.toISOString().split('T')[0];
+
+      if (!byMethod[method]) byMethod[method] = { count: 0, amount: 0 };
+      byMethod[method].count += 1;
+      byMethod[method].amount += Number(payment.amount);
+
+      if (!byCategory[category]) byCategory[category] = { count: 0, amount: 0 };
+      byCategory[category].count += 1;
+      byCategory[category].amount += Number(payment.amount);
+
+      if (!byDate[date]) byDate[date] = { count: 0, amount: 0 };
+      byDate[date].count += 1;
+      byDate[date].amount += Number(payment.amount);
+    }
+
+    const totals = {
+      count: payments.length,
+      amount: payments.reduce((sum, p) => sum + Number(p.amount), 0),
+    };
+
+    return {
+      byMethod: Object.entries(byMethod).map(([method, values]) => ({ method, ...values })),
+      byCategory: Object.entries(byCategory).map(([category, values]) => ({ category, ...values })),
+      byDate: Object.entries(byDate).map(([date, values]) => ({ date, ...values })),
+      totals,
+    };
+  }
+
+  // تقرير خطط التقسيط
+  async getInstallmentReport(params: { status?: string }) {
+    const { status } = params;
+
+    const where: any = {};
+    if (status) where.status = status;
+
+    const plans = await this.prisma.billInstallmentPlan.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            name: true,
+            accountNo: true,
+            category: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const summary = {
+      totalPlans: plans.length,
+      totalAmount: 0,
+      paidAmount: 0,
+      remainingAmount: 0,
+      byStatus: {} as Record<string, number>,
+    };
+
+    for (const plan of plans) {
+      summary.totalAmount += Number(plan.totalAmount);
+      summary.remainingAmount += Number(plan.remainingAmount);
+      summary.byStatus[plan.status] = (summary.byStatus[plan.status] || 0) + 1;
+    }
+
+    // حساب المبلغ المدفوع
+    summary.paidAmount = summary.totalAmount - summary.remainingAmount;
+
+    return {
+      data: plans.map((plan) => ({
+        planNo: plan.planNo,
+        customer: plan.customer,
+        totalAmount: Number(plan.totalAmount),
+        paidAmount: Number(plan.totalAmount) - Number(plan.remainingAmount),
+        remainingAmount: Number(plan.remainingAmount),
+        numberOfInstallments: plan.numberOfInstallments,
+        status: plan.status,
+        startDate: plan.startDate,
+        endDate: plan.endDate,
+      })),
+      summary,
+    };
+  }
+
+  // تقرير الفصل والتوصيل
+  async getDisconnectionReport(params: { fromDate?: string; toDate?: string; reason?: string }) {
+    const { fromDate, toDate, reason } = params;
+
+    const where: any = {};
+
+    if (fromDate || toDate) {
+      where.scheduledDate = {};
+      if (fromDate) where.scheduledDate.gte = new Date(fromDate);
+      if (toDate) where.scheduledDate.lte = new Date(toDate);
+    }
+
+    if (reason) where.reason = reason;
+
+    const orders = await this.prisma.billDisconnectionOrder.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            name: true,
+            accountNo: true,
+            category: { select: { name: true } },
+          },
+        },
+        meter: {
+          select: { meterNo: true },
+        },
+      },
+      orderBy: { scheduledDate: 'desc' },
+    });
+
+    const summary = {
+      total: orders.length,
+      byType: {} as Record<string, number>,
+      byStatus: {} as Record<string, number>,
+      byReason: {} as Record<string, number>,
+    };
+
+    for (const order of orders) {
+      summary.byType[order.orderType] = (summary.byType[order.orderType] || 0) + 1;
+      summary.byStatus[order.status] = (summary.byStatus[order.status] || 0) + 1;
+      summary.byReason[order.reason] = (summary.byReason[order.reason] || 0) + 1;
+    }
+
+    return {
+      data: orders.map((order) => ({
+        orderNo: order.orderNo,
+        customer: order.customer,
+        meter: order.meter,
+        orderType: order.orderType,
+        reason: order.reason,
+        status: order.status,
+        scheduledDate: order.scheduledDate,
+        executedDate: order.executedDate,
+      })),
+      summary,
+    };
+  }
+
+  // تقرير الشكاوى
+  async getComplaintReport(params: { fromDate?: string; toDate?: string; status?: string }) {
+    const { fromDate, toDate, status } = params;
+
+    const where: any = {};
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) where.createdAt.lte = new Date(toDate);
+    }
+
+    if (status) where.status = status;
+
+    const complaints = await this.prisma.billComplaint.findMany({
+      where,
+      select: {
+        type: true,
+        status: true,
+      },
+    });
+
+    const byType: Record<string, Record<string, number>> = {};
+
+    for (const item of complaints) {
+      if (!byType[item.type]) {
+        byType[item.type] = { open: 0, in_progress: 0, resolved: 0, closed: 0 };
+      }
+      byType[item.type][item.status] = (byType[item.type][item.status] || 0) + 1;
+    }
+
+    const data = Object.entries(byType).map(([type, statuses]) => {
+      const total = Object.values(statuses).reduce((a, b) => a + b, 0);
+      return {
+        type,
+        open: statuses.open || 0,
+        in_progress: statuses.in_progress || 0,
+        resolved: statuses.resolved || 0,
+        closed: statuses.closed || 0,
+        total,
+      };
+    });
+
+    const totals = data.reduce(
+      (acc, item) => ({
+        open: acc.open + item.open,
+        in_progress: acc.in_progress + item.in_progress,
+        resolved: acc.resolved + item.resolved,
+        closed: acc.closed + item.closed,
+        total: acc.total + item.total,
+      }),
+      { open: 0, in_progress: 0, resolved: 0, closed: 0, total: 0 }
+    );
+
+    return { data, totals };
+  }
 }
