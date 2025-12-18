@@ -461,4 +461,124 @@ export class MetersService {
       orderBy: { meterNo: 'asc' },
     });
   }
+
+  async getStatistics() {
+    const [total, byStatus, byType, installed, inStock] = await Promise.all([
+      this.prisma.billMeter.count(),
+      this.prisma.billMeter.groupBy({
+        by: ['status'],
+        _count: { status: true },
+      }),
+      this.prisma.billMeter.groupBy({
+        by: ['meterTypeId'],
+        _count: { meterTypeId: true },
+      }),
+      this.prisma.billMeter.count({ where: { customerId: { not: null } } }),
+      this.prisma.billMeter.count({ where: { status: 'in_stock' } }),
+    ]);
+
+    const statusCounts: Record<string, number> = {
+      active: 0,
+      faulty: 0,
+      replaced: 0,
+      removed: 0,
+      in_stock: 0,
+    };
+    byStatus.forEach((s) => {
+      statusCounts[s.status] = s._count.status;
+    });
+
+    // الحصول على أسماء أنواع العدادات
+    const meterTypes = await this.prisma.billMeterType.findMany({
+      select: { id: true, name: true },
+    });
+    const typeMap = new Map(meterTypes.map((t) => [t.id, t.name]));
+
+    return {
+      total,
+      installed,
+      inStock,
+      byStatus: statusCounts,
+      byType: byType.map((t) => ({
+        typeId: t.meterTypeId,
+        typeName: typeMap.get(t.meterTypeId) || 'غير معروف',
+        count: t._count.meterTypeId,
+      })),
+    };
+  }
+
+  async uninstall(id: string, reason: string) {
+    const meter = await this.findOne(id);
+
+    if (!meter.customerId) {
+      throw new BadRequestException('العداد غير مركب لدى عميل');
+    }
+
+    const uninstallDate = new Date();
+    const billingPeriod = `${uninstallDate.getFullYear()}-${String(uninstallDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // تسجيل قراءة نهائية
+    await this.prisma.billMeterReading.create({
+      data: {
+        meterId: id,
+        readingDate: uninstallDate,
+        reading: meter.lastReading,
+        previousReading: meter.lastReading,
+        consumption: 0,
+        readingType: 'final',
+        billingPeriod,
+        notes: `قراءة نهائية - إزالة العداد: ${reason}`,
+      },
+    });
+
+    return this.prisma.billMeter.update({
+      where: { id },
+      data: {
+        customerId: null,
+        status: 'removed',
+        notes: `${meter.notes || ''}
+تم الإزالة بتاريخ ${uninstallDate.toISOString().split('T')[0]} - ${reason}`.trim(),
+      },
+      include: {
+        meterType: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            isSmartMeter: true,
+          },
+        },
+      },
+    });
+  }
+
+  async markAsFaulty(id: string, reason: string) {
+    const meter = await this.findOne(id);
+
+    return this.prisma.billMeter.update({
+      where: { id },
+      data: {
+        status: 'faulty',
+        notes: `${meter.notes || ''}
+تم التحديد كعاطل بتاريخ ${new Date().toISOString().split('T')[0]} - ${reason}`.trim(),
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            accountNo: true,
+            name: true,
+          },
+        },
+        meterType: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            isSmartMeter: true,
+          },
+        },
+      },
+    });
+  }
 }

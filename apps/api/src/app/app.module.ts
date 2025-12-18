@@ -14,6 +14,7 @@ import { InvoicesModule } from '../modules/invoices/invoices.module';
 import { PaymentsModule } from '../modules/payments/payments.module';
 import { ComplaintsModule } from '../modules/complaints/complaints.module';
 import { ReportsModule } from '../modules/reports/reports.module';
+import { SubscriptionRequestsModule } from '../modules/subscription-requests/subscription-requests.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReportsModule } from '../modules/reports/reports.module';
     PaymentsModule,
     ComplaintsModule,
     ReportsModule,
+    SubscriptionRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
