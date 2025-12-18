@@ -35,37 +35,60 @@ model BillCustomer {
   name           String    @db.VarChar(200)
   nameEn         String?   @map("name_en") @db.VarChar(200)
   categoryId     String    @map("category_id") @db.Uuid
-  idType         String    @map("id_type") @db.VarChar(50) // national_id, iqama, cr
+  idType         String    @map("id_type") @db.VarChar(50) // national_id, iqama, cr, passport
   idNumber       String    @map("id_number") @db.VarChar(50)
+  idCardImage    String?   @map("id_card_image") @db.VarChar(500) // صورة البطاقة الشخصية
+  taxNumber      String?   @map("tax_number") @db.VarChar(50) // الرقم الضريبي
   phone          String    @db.VarChar(20)
   mobile         String?   @db.VarChar(20)
   email          String?   @db.VarChar(100)
   address        String    @db.Text
   city           String?   @db.VarChar(100)
   district       String?   @db.VarChar(100)
+  building       String?   @db.VarChar(100)
+  floor          String?   @db.VarChar(20)
   latitude       Decimal?  @db.Decimal(10, 8)
   longitude      Decimal?  @db.Decimal(11, 8)
   stationId      String?   @map("station_id") @db.Uuid
   transformerId  String?   @map("transformer_id") @db.Uuid
   creditLimit    Decimal   @default(0) @map("credit_limit") @db.Decimal(15, 2)
-  paymentTerms   String    @default("postpaid") @map("payment_terms") @db.VarChar(20)
-  billingCycle   String    @default("monthly") @map("billing_cycle") @db.VarChar(20)
-  status         String    @default("active") @db.VarChar(20) // active, suspended, disconnected, closed
+  paymentTerms   String    @default("postpaid") @map("payment_terms") @db.VarChar(20) // prepaid, postpaid
+  billingCycle   String    @default("monthly") @map("billing_cycle") @db.VarChar(20) // monthly, quarterly
+  accountId      String?   @map("account_id") @db.Uuid // الربط المحاسبي
+  status         String    @default("active") @db.VarChar(20) // active, inactive, suspended, disconnected, closed
+  suspensionReason String? @map("suspension_reason") @db.Text
+  disconnectionDate DateTime? @map("disconnection_date")
   connectionDate DateTime? @map("connection_date")
+  
+  // بيانات الدعم الحكومي
+  isSubsidized         Boolean   @default(false) @map("is_subsidized")
+  subsidyProgramId     String?   @map("subsidy_program_id") @db.Uuid
+  subsidyReferenceNo   String?   @map("subsidy_reference_no") @db.VarChar(50)
+  subsidyStartDate     DateTime? @map("subsidy_start_date")
+  subsidyEndDate       DateTime? @map("subsidy_end_date")
+  
+  // جهة الاتصال الرئيسية
+  contactPerson  String?   @map("contact_person") @db.VarChar(100)
+  contactPhone   String?   @map("contact_phone") @db.VarChar(20)
+  
+  notes          String?   @db.Text
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  category   BillCustomerCategory @relation(fields: [categoryId], references: [id])
-  contracts  BillContract[]
-  meters     BillMeter[]
-  invoices   BillInvoice[]
-  payments   BillPayment[]
-  complaints BillComplaint[]
-  addresses  BillCustomerAddress[]
-  contacts   BillCustomerContact[]
+  category    BillCustomerCategory @relation(fields: [categoryId], references: [id])
+  contracts   BillContract[]
+  meters      BillMeter[]
+  invoices    BillInvoice[]
+  payments    BillPayment[]
+  complaints  BillComplaint[]
+  addresses   BillCustomerAddress[]
+  contacts    BillCustomerContact[]
+  components  BillCustomerComponent[]
+  componentHistory BillComponentHistory[]
 
   @@index([categoryId])
   @@index([status])
+  @@index([isSubsidized])
   @@map("bill_customers")
 }
 
@@ -443,4 +466,134 @@ model BillSequence {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("bill_sequences")
+}
+
+
+// ==================== مكونات العميل ====================
+model BillCustomerComponent {
+  id                     String    @id @default(uuid()) @db.Uuid
+  customerId             String    @map("customer_id") @db.Uuid
+  
+  // بيانات العداد
+  meterSerialNumber      String?   @map("meter_serial_number") @db.VarChar(100)
+  meterType              String?   @map("meter_type") @db.VarChar(50) // smart, traditional
+  meterModel             String?   @map("meter_model") @db.VarChar(100)
+  meterInstallationDate  DateTime? @map("meter_installation_date")
+  meterWarrantyEnd       DateTime? @map("meter_warranty_end")
+  
+  // بيانات القاطع
+  breakerSerialNumber    String?   @map("breaker_serial_number") @db.VarChar(100)
+  breakerType            String?   @map("breaker_type") @db.VarChar(50)
+  breakerCapacity        String?   @map("breaker_capacity") @db.VarChar(20) // أمبير
+  breakerBrand           String?   @map("breaker_brand") @db.VarChar(50)
+  breakerInstallationDate DateTime? @map("breaker_installation_date")
+  breakerWarrantyEnd     DateTime? @map("breaker_warranty_end")
+  
+  // بيانات الختم
+  sealNumber             String?   @map("seal_number") @db.VarChar(50)
+  sealColor              String?   @map("seal_color") @db.VarChar(30)
+  sealType               String?   @map("seal_type") @db.VarChar(50)
+  sealInstallationDate   DateTime? @map("seal_installation_date")
+  
+  lastUpdatedAt          DateTime  @default(now()) @map("last_updated_at")
+  lastUpdatedBy          String?   @map("last_updated_by") @db.Uuid
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([meterSerialNumber])
+  @@map("bill_customer_components")
+}
+
+// ==================== تاريخ المكونات ====================
+model BillComponentHistory {
+  id              String    @id @default(uuid()) @db.Uuid
+  customerId      String    @map("customer_id") @db.Uuid
+  
+  // نوع المكون
+  componentType   String    @map("component_type") @db.VarChar(50) // meter, breaker, seal, cable
+  
+  // بيانات المكون
+  serialNumber    String?   @map("serial_number") @db.VarChar(100)
+  model           String?   @db.VarChar(100)
+  brand           String?   @db.VarChar(100)
+  specifications  Json?     @db.Json // مواصفات إضافية
+  
+  // العملية
+  actionType      String    @map("action_type") @db.VarChar(50) // installed, replaced, removed
+  actionDate      DateTime  @map("action_date")
+  actionTime      DateTime? @map("action_time") @db.Time
+  
+  // السبب
+  reason          String?   @db.VarChar(200) // تركيب جديد، عطل، ترقية، صيانة دورية
+  notes           String?   @db.Text
+  
+  // الضمان
+  warrantyStatus  String?   @map("warranty_status") @db.VarChar(50) // under_warranty, out_of_warranty, extended_warranty
+  warrantyEndDate DateTime? @map("warranty_end_date")
+  
+  // الربط
+  workOrderId     String?   @map("work_order_id") @db.Uuid
+  replacementId   String?   @map("replacement_id") @db.Uuid
+  technicianId    String?   @map("technician_id") @db.Uuid
+  
+  // التكلفة
+  cost            Decimal   @default(0) @db.Decimal(15, 2)
+  invoiceId       String?   @map("invoice_id") @db.Uuid
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([serialNumber])
+  @@index([componentType])
+  @@index([actionDate])
+  @@map("bill_component_history")
+}
+
+// ==================== برامج الدعم الحكومي ====================
+model BillSubsidyProgram {
+  id              String    @id @default(uuid()) @db.Uuid
+  code            String    @unique @db.VarChar(20)
+  name            String    @db.VarChar(100)
+  nameEn          String?   @map("name_en") @db.VarChar(100)
+  description     String?   @db.Text
+  monthlyQuotaKwh Decimal   @map("monthly_quota_kwh") @db.Decimal(10, 2) // الحصة الشهرية بالكيلوواط
+  ratePerKwh      Decimal   @map("rate_per_kwh") @db.Decimal(10, 4) // سعر الكيلوواط المدعوم
+  isActive        Boolean   @default(true) @map("is_active")
+  effectiveFrom   DateTime  @map("effective_from")
+  effectiveTo     DateTime? @map("effective_to")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  quotas BillSubsidyQuota[]
+
+  @@map("bill_subsidy_programs")
+}
+
+// ==================== حصص الدعم الشهرية ====================
+model BillSubsidyQuota {
+  id            String    @id @default(uuid()) @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  programId     String    @map("program_id") @db.Uuid
+  year          Int
+  month         Int
+  allocatedKwh  Decimal   @map("allocated_kwh") @db.Decimal(10, 2) // الحصة المخصصة
+  consumedKwh   Decimal   @default(0) @map("consumed_kwh") @db.Decimal(10, 2) // المستهلك
+  remainingKwh  Decimal?  @map("remaining_kwh") @db.Decimal(10, 2) // المتبقي
+  subsidyValue  Decimal?  @map("subsidy_value") @db.Decimal(15, 2) // قيمة الدعم المستحقة
+  status        String    @default("active") @db.VarChar(20) // active, exhausted, expired
+  exhaustedAt   DateTime? @map("exhausted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  program BillSubsidyProgram @relation(fields: [programId], references: [id])
+
+  @@unique([customerId, year, month])
+  @@index([customerId])
+  @@index([programId])
+  @@index([year, month])
+  @@map("bill_subsidy_quotas")
 }

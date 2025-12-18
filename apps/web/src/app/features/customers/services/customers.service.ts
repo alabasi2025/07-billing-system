@@ -1,7 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { Customer, CustomerCategory, Contract, ApiResponse, PaginatedResponse } from '../../../core/models';
+import {
+  CreateCustomerDto,
+  UpdateCustomerDto,
+  CustomerFilterDto,
+  ChangeCustomerStatusDto,
+  CustomerBalance,
+  CustomerStatistics,
+} from '../../../core/models/customer.model';
 
 @Injectable({
   providedIn: 'root'
@@ -31,14 +39,8 @@ export class CustomersService {
   }
 
   // Customers
-  getCustomers(params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    categoryId?: string;
-    status?: string;
-  }): Observable<PaginatedResponse<Customer>> {
-    return this.api.get<PaginatedResponse<Customer>>('/api/v1/customers', params);
+  getCustomers(params?: CustomerFilterDto): Observable<PaginatedResponse<Customer>> {
+    return this.api.get<PaginatedResponse<Customer>>('/api/v1/customers', params as Record<string, string | number | boolean> | undefined);
   }
 
   getCustomerById(id: string): Observable<ApiResponse<Customer>> {
@@ -49,20 +51,44 @@ export class CustomersService {
     return this.api.get<ApiResponse<Customer>>(`/api/v1/customers/account/${accountNo}`);
   }
 
-  createCustomer(data: Partial<Customer>): Observable<ApiResponse<Customer>> {
+  createCustomer(data: CreateCustomerDto): Observable<ApiResponse<Customer>> {
     return this.api.post<ApiResponse<Customer>>('/api/v1/customers', data);
   }
 
-  updateCustomer(id: string, data: Partial<Customer>): Observable<ApiResponse<Customer>> {
+  updateCustomer(id: string, data: UpdateCustomerDto): Observable<ApiResponse<Customer>> {
     return this.api.put<ApiResponse<Customer>>(`/api/v1/customers/${id}`, data);
   }
 
-  updateCustomerStatus(id: string, status: string): Observable<ApiResponse<Customer>> {
-    return this.api.post<ApiResponse<Customer>>(`/api/v1/customers/${id}/status`, { status });
+  changeCustomerStatus(id: string, statusDto: ChangeCustomerStatusDto): Observable<ApiResponse<Customer>> {
+    return this.api.patch<ApiResponse<Customer>>(`/api/v1/customers/${id}/status`, statusDto);
   }
 
-  getCustomerBalance(id: string): Observable<ApiResponse<{ balance: number; overdueAmount: number }>> {
-    return this.api.get<ApiResponse<{ balance: number; overdueAmount: number }>>(`/api/v1/customers/${id}/balance`);
+  suspendCustomer(id: string, reason?: string): Observable<ApiResponse<Customer>> {
+    return this.api.post<ApiResponse<Customer>>(`/api/v1/customers/${id}/suspend`, { reason });
+  }
+
+  activateCustomer(id: string): Observable<ApiResponse<Customer>> {
+    return this.api.post<ApiResponse<Customer>>(`/api/v1/customers/${id}/activate`, {});
+  }
+
+  deleteCustomer(id: string): Observable<ApiResponse<{ message: string }>> {
+    return this.api.delete<ApiResponse<{ message: string }>>(`/api/v1/customers/${id}`);
+  }
+
+  getCustomerBalance(id: string): Observable<ApiResponse<CustomerBalance>> {
+    return this.api.get<ApiResponse<CustomerBalance>>(`/api/v1/customers/${id}/balance`);
+  }
+
+  getCustomerInvoices(id: string, page = 1, limit = 10): Observable<PaginatedResponse<any>> {
+    return this.api.get<PaginatedResponse<any>>(`/api/v1/customers/${id}/invoices`, { page, limit });
+  }
+
+  getCustomerPayments(id: string, page = 1, limit = 10): Observable<PaginatedResponse<any>> {
+    return this.api.get<PaginatedResponse<any>>(`/api/v1/customers/${id}/payments`, { page, limit });
+  }
+
+  getStatistics(): Observable<ApiResponse<CustomerStatistics>> {
+    return this.api.get<ApiResponse<CustomerStatistics>>('/api/v1/customers/statistics');
   }
 
   // Contracts

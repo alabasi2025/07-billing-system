@@ -158,7 +158,7 @@ export class CustomerDetailComponent implements OnInit {
   private customersService = inject(CustomersService);
 
   customer: Customer | null = null;
-  balance: { balance: number; overdueAmount: number } | null = null;
+  balance: { balance: number; overdueAmount?: number } | null = null;
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -190,14 +190,24 @@ export class CustomerDetailComponent implements OnInit {
 
   toggleStatus() {
     if (!this.customer) return;
-    const newStatus = this.customer.status === 'active' ? 'suspended' : 'active';
-    this.customersService.updateCustomerStatus(this.customer.id, newStatus).subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.customer = response.data;
+    
+    if (this.customer.status === 'active') {
+      this.customersService.suspendCustomer(this.customer.id, 'إيقاف من قبل المشغل').subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.customer = response.data;
+          }
         }
-      }
-    });
+      });
+    } else {
+      this.customersService.activateCustomer(this.customer.id).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.customer = response.data;
+          }
+        }
+      });
+    }
   }
 
   formatCurrency(value: number): string {

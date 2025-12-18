@@ -224,7 +224,7 @@ export class PaymentFormComponent implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           this.customerBalance = response.data.balance;
-          this.overdueAmount = response.data.overdueAmount;
+          this.overdueAmount = response.data.overdueAmount || 0;
         }
       }
     });

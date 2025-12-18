@@ -4,6 +4,14 @@ import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CustomersService } from '../services/customers.service';
 import { CustomerCategory } from '../../../core/models';
+import {
+  IdType,
+  PaymentTerms,
+  BillingCycle,
+  ID_TYPE_OPTIONS,
+  PAYMENT_TERMS_OPTIONS,
+  BILLING_CYCLE_OPTIONS,
+} from '../../../core/models/customer.model';
 
 @Component({
   selector: 'app-customer-form',
@@ -25,15 +33,15 @@ import { CustomerCategory } from '../../../core/models';
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
         <!-- Basic Info -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">المعلومات الأساسية</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">المعلومات الأساسية</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm text-gray-600 mb-1">اسم العميل <span class="text-red-500">*</span></label>
               <input type="text" formControlName="name"
                      class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                      [class.border-red-500]="form.get('name')?.invalid && form.get('name')?.touched">
               <p *ngIf="form.get('name')?.invalid && form.get('name')?.touched" class="text-red-500 text-xs mt-1">
-                اسم العميل مطلوب
+                اسم العميل مطلوب (3 أحرف على الأقل)
               </p>
             </div>
             <div>
@@ -53,10 +61,7 @@ import { CustomerCategory } from '../../../core/models';
               <label class="block text-sm text-gray-600 mb-1">نوع الهوية <span class="text-red-500">*</span></label>
               <select formControlName="idType"
                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="national_id">هوية وطنية</option>
-                <option value="iqama">إقامة</option>
-                <option value="cr">سجل تجاري</option>
-                <option value="passport">جواز سفر</option>
+                <option *ngFor="let opt of idTypeOptions" [value]="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div>
@@ -64,26 +69,45 @@ import { CustomerCategory } from '../../../core/models';
               <input type="text" formControlName="idNumber"
                      class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">الرقم الضريبي</label>
+              <input type="text" formControlName="taxNumber"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="300000000000000">
+            </div>
           </div>
         </div>
 
         <!-- Contact Info -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">معلومات الاتصال</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">معلومات الاتصال</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm text-gray-600 mb-1">رقم الهاتف <span class="text-red-500">*</span></label>
               <input type="tel" formControlName="phone" dir="ltr"
-                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="0112345678">
             </div>
             <div>
               <label class="block text-sm text-gray-600 mb-1">رقم الجوال</label>
               <input type="tel" formControlName="mobile" dir="ltr"
-                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="0501234567">
             </div>
             <div>
               <label class="block text-sm text-gray-600 mb-1">البريد الإلكتروني</label>
               <input type="email" formControlName="email" dir="ltr"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="example@domain.com">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">جهة الاتصال</label>
+              <input type="text" formControlName="contactPerson"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">هاتف جهة الاتصال</label>
+              <input type="tel" formControlName="contactPhone" dir="ltr"
                      class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
           </div>
@@ -91,10 +115,10 @@ import { CustomerCategory } from '../../../core/models';
 
         <!-- Address -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">العنوان</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="md:col-span-2">
-              <label class="block text-sm text-gray-600 mb-1">العنوان <span class="text-red-500">*</span></label>
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">العنوان</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2">
+              <label class="block text-sm text-gray-600 mb-1">العنوان التفصيلي <span class="text-red-500">*</span></label>
               <textarea formControlName="address" rows="2"
                         class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
             </div>
@@ -108,36 +132,95 @@ import { CustomerCategory } from '../../../core/models';
               <input type="text" formControlName="district"
                      class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">المبنى</label>
+              <input type="text" formControlName="building"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">الطابق</label>
+              <input type="text" formControlName="floor"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">خط العرض</label>
+              <input type="number" formControlName="latitude" step="0.0001"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="24.7136">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">خط الطول</label>
+              <input type="number" formControlName="longitude" step="0.0001"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     placeholder="46.6753">
+            </div>
           </div>
         </div>
 
         <!-- Billing Settings -->
         <div class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">إعدادات الفوترة</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">إعدادات الفوترة</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label class="block text-sm text-gray-600 mb-1">طريقة الدفع</label>
               <select formControlName="paymentTerms"
                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="postpaid">آجل</option>
-                <option value="prepaid">مسبق الدفع</option>
+                <option *ngFor="let opt of paymentTermsOptions" [value]="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div>
               <label class="block text-sm text-gray-600 mb-1">دورة الفوترة</label>
               <select formControlName="billingCycle"
                       class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option value="monthly">شهري</option>
-                <option value="bimonthly">كل شهرين</option>
-                <option value="quarterly">ربع سنوي</option>
+                <option *ngFor="let opt of billingCycleOptions" [value]="opt.value">{{ opt.label }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm text-gray-600 mb-1">حد الائتمان</label>
+              <label class="block text-sm text-gray-600 mb-1">حد الائتمان (ريال)</label>
               <input type="number" formControlName="creditLimit"
                      class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">تاريخ التوصيل</label>
+              <input type="date" formControlName="connectionDate"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
           </div>
+        </div>
+
+        <!-- Government Subsidy -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">الدعم الحكومي</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="flex items-center gap-2">
+              <input type="checkbox" formControlName="isSubsidized" id="isSubsidized"
+                     class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+              <label for="isSubsidized" class="text-sm text-gray-600">يستفيد من الدعم الحكومي</label>
+            </div>
+            <div *ngIf="form.get('isSubsidized')?.value">
+              <label class="block text-sm text-gray-600 mb-1">رقم مرجع الدعم</label>
+              <input type="text" formControlName="subsidyReferenceNo"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div *ngIf="form.get('isSubsidized')?.value">
+              <label class="block text-sm text-gray-600 mb-1">تاريخ بداية الدعم</label>
+              <input type="date" formControlName="subsidyStartDate"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div *ngIf="form.get('isSubsidized')?.value">
+              <label class="block text-sm text-gray-600 mb-1">تاريخ نهاية الدعم</label>
+              <input type="date" formControlName="subsidyEndDate"
+                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">ملاحظات</h2>
+          <textarea formControlName="notes" rows="3"
+                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="أي ملاحظات إضافية..."></textarea>
         </div>
 
         <!-- Actions -->
@@ -166,22 +249,39 @@ export class CustomerFormComponent implements OnInit {
   customerId: string | null = null;
   loading = false;
 
+  idTypeOptions = ID_TYPE_OPTIONS;
+  paymentTermsOptions = PAYMENT_TERMS_OPTIONS;
+  billingCycleOptions = BILLING_CYCLE_OPTIONS;
+
   constructor() {
     this.form = this.fb.group({
-      name: ['', Validators.required],
-      nameEn: [''],
+      name: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
+      nameEn: ['', Validators.maxLength(200)],
       categoryId: ['', Validators.required],
       idType: ['national_id', Validators.required],
-      idNumber: ['', Validators.required],
+      idNumber: ['', [Validators.required, Validators.minLength(5)]],
+      taxNumber: [''],
       phone: ['', Validators.required],
       mobile: [''],
       email: ['', Validators.email],
       address: ['', Validators.required],
       city: [''],
       district: [''],
+      building: [''],
+      floor: [''],
+      latitude: [null],
+      longitude: [null],
       paymentTerms: ['postpaid'],
       billingCycle: ['monthly'],
       creditLimit: [0],
+      connectionDate: [null],
+      isSubsidized: [false],
+      subsidyReferenceNo: [''],
+      subsidyStartDate: [null],
+      subsidyEndDate: [null],
+      contactPerson: [''],
+      contactPhone: [''],
+      notes: [''],
     });
   }
 
@@ -209,14 +309,28 @@ export class CustomerFormComponent implements OnInit {
     this.customersService.getCustomerById(this.customerId).subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.form.patchValue(response.data);
+          const customer = response.data;
+          this.form.patchValue({
+            ...customer,
+            connectionDate: customer.connectionDate ? this.formatDateForInput(customer.connectionDate) : null,
+            subsidyStartDate: customer.subsidyStartDate ? this.formatDateForInput(customer.subsidyStartDate) : null,
+            subsidyEndDate: customer.subsidyEndDate ? this.formatDateForInput(customer.subsidyEndDate) : null,
+          });
         }
       }
     });
   }
 
+  formatDateForInput(date: string | Date): string {
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
+  }
+
   onSubmit() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
 
     this.loading = true;
     const data = this.form.value;
