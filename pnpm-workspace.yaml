@@ -1,6 +1,17 @@
 autoInstallPeers: true
 
 onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@parcel/watcher'
   - '@prisma/client'
   - '@prisma/engines'
+  - '@scarf/scarf'
+  - '@swc/core'
+  - bcrypt
+  - esbuild
+  - less
+  - lmdb
+  - msgpackr-extract
+  - nx
   - prisma
+  - unrs-resolver

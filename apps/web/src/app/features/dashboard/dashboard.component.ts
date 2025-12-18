@@ -2,7 +2,9 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ReportsService } from '../reports/services/reports.service';
-import { DashboardStats } from '../../core/models';
+import { InvoicesService } from '../invoices/services/invoices.service';
+import { PaymentsService } from '../payments/services/payments.service';
+import { DashboardStats, Invoice, Payment } from '../../core/models';
 
 @Component({
   selector: 'app-dashboard',
@@ -108,19 +110,26 @@ import { DashboardStats } from '../../core/models';
             <h3 class="card-title">أحدث الفواتير</h3>
             <a routerLink="/invoices" class="view-all">عرض الكل</a>
           </div>
-          <div class="list">
-            <div class="list-item" *ngFor="let i of [1,2,3,4,5]">
+          <div class="list" *ngIf="!loadingInvoices && recentInvoices.length > 0">
+            <div class="list-item" *ngFor="let invoice of recentInvoices">
               <div class="item-info">
-                <p class="item-title">INV-2024-00{{ i }}</p>
-                <p class="item-sub">أحمد محمد</p>
+                <p class="item-title">{{ invoice.invoiceNo }}</p>
+                <p class="item-sub">{{ invoice.customer?.name || 'غير محدد' }}</p>
               </div>
               <div class="item-value">
-                <p class="amount">{{ formatCurrency(250 * i) }}</p>
-                <span class="badge" [class]="i % 2 === 0 ? 'badge-green' : 'badge-yellow'">
-                  {{ i % 2 === 0 ? 'مدفوعة' : 'معلقة' }}
+                <p class="amount">{{ formatCurrency(invoice.totalAmount) }}</p>
+                <span class="badge" [class]="getInvoiceStatusClass(invoice.status)">
+                  {{ getInvoiceStatusLabel(invoice.status) }}
                 </span>
               </div>
             </div>
+          </div>
+          <div class="empty-state" *ngIf="!loadingInvoices && recentInvoices.length === 0">
+            <p>لا توجد فواتير حديثة</p>
+          </div>
+          <div class="loading-state" *ngIf="loadingInvoices">
+            <i class="pi pi-spin pi-spinner"></i>
+            <p>جاري التحميل...</p>
           </div>
         </div>
 
@@ -130,17 +139,24 @@ import { DashboardStats } from '../../core/models';
             <h3 class="card-title">أحدث المدفوعات</h3>
             <a routerLink="/payments" class="view-all">عرض الكل</a>
           </div>
-          <div class="list">
-            <div class="list-item" *ngFor="let i of [1,2,3,4,5]">
+          <div class="list" *ngIf="!loadingPayments && recentPayments.length > 0">
+            <div class="list-item" *ngFor="let payment of recentPayments">
               <div class="item-info">
-                <p class="item-title">PAY-2024-00{{ i }}</p>
-                <p class="item-sub">{{ i % 2 === 0 ? 'نقدي' : 'تحويل بنكي' }}</p>
+                <p class="item-title">{{ payment.paymentNo }}</p>
+                <p class="item-sub">{{ getPaymentMethodLabel(payment.paymentMethod) }}</p>
               </div>
               <div class="item-value">
-                <p class="amount green">{{ formatCurrency(300 * i) }}</p>
-                <p class="date">{{ getDate(i) }}</p>
+                <p class="amount green">{{ formatCurrency(payment.amount) }}</p>
+                <p class="date">{{ formatDate(payment.paymentDate) }}</p>
               </div>
             </div>
+          </div>
+          <div class="empty-state" *ngIf="!loadingPayments && recentPayments.length === 0">
+            <p>لا توجد مدفوعات حديثة</p>
+          </div>
+          <div class="loading-state" *ngIf="loadingPayments">
+            <i class="pi pi-spin pi-spinner"></i>
+            <p>جاري التحميل...</p>
           </div>
         </div>
       </div>
@@ -409,6 +425,31 @@ import { DashboardStats } from '../../core/models';
       color: #b45309;
     }
     
+    .badge-red {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    
+    .badge-gray {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    
+    /* Empty & Loading States */
+    .empty-state, .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      color: #6b7280;
+    }
+    
+    .loading-state i {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    
     /* Alerts */
     .alerts {
       display: flex;
@@ -451,10 +492,19 @@ import { DashboardStats } from '../../core/models';
 })
 export class DashboardComponent implements OnInit {
   private reportsService = inject(ReportsService);
+  private invoicesService = inject(InvoicesService);
+  private paymentsService = inject(PaymentsService);
+  
   stats: DashboardStats | null = null;
+  recentInvoices: Invoice[] = [];
+  recentPayments: Payment[] = [];
+  loadingInvoices = true;
+  loadingPayments = true;
 
   ngOnInit() {
     this.loadStats();
+    this.loadRecentInvoices();
+    this.loadRecentPayments();
   }
 
   loadStats() {
@@ -470,6 +520,34 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  loadRecentInvoices() {
+    this.loadingInvoices = true;
+    this.invoicesService.getInvoices({ page: 1, limit: 5 }).subscribe({
+      next: (response) => {
+        this.recentInvoices = response.data || [];
+        this.loadingInvoices = false;
+      },
+      error: (err) => {
+        console.error('Error loading recent invoices:', err);
+        this.loadingInvoices = false;
+      }
+    });
+  }
+
+  loadRecentPayments() {
+    this.loadingPayments = true;
+    this.paymentsService.getPayments({ page: 1, limit: 5 }).subscribe({
+      next: (response) => {
+        this.recentPayments = response.data || [];
+        this.loadingPayments = false;
+      },
+      error: (err) => {
+        console.error('Error loading recent payments:', err);
+        this.loadingPayments = false;
+      }
+    });
+  }
+
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('ar-SA', {
       style: 'currency',
@@ -478,9 +556,38 @@ export class DashboardComponent implements OnInit {
     }).format(value);
   }
 
-  getDate(offset: number): string {
-    const date = new Date();
-    date.setDate(date.getDate() - offset);
-    return date.toLocaleDateString('ar-SA');
+  formatDate(date: string | Date): string {
+    return new Date(date).toLocaleDateString('ar-SA');
+  }
+
+  getInvoiceStatusClass(status: string): string {
+    switch (status) {
+      case 'paid': return 'badge-green';
+      case 'issued': return 'badge-yellow';
+      case 'overdue': return 'badge-red';
+      case 'cancelled': return 'badge-gray';
+      default: return 'badge-yellow';
+    }
+  }
+
+  getInvoiceStatusLabel(status: string): string {
+    switch (status) {
+      case 'paid': return 'مدفوعة';
+      case 'issued': return 'معلقة';
+      case 'overdue': return 'متأخرة';
+      case 'cancelled': return 'ملغاة';
+      case 'partial': return 'مدفوعة جزئياً';
+      default: return status;
+    }
+  }
+
+  getPaymentMethodLabel(method: string): string {
+    switch (method) {
+      case 'cash': return 'نقدي';
+      case 'bank': return 'تحويل بنكي';
+      case 'card': return 'بطاقة';
+      case 'online': return 'إلكتروني';
+      default: return method;
+    }
   }
 }

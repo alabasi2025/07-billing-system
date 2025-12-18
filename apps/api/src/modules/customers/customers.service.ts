@@ -8,6 +8,7 @@ import {
   ChangeCustomerStatusDto,
 } from './dto/customer.dto';
 import { SequenceService } from '../../common/utils/sequence.service';
+import { EventPublisherService } from '../events/event-publisher.service';
 import { Prisma } from '../../../../../generated/prisma';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class CustomersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sequenceService: SequenceService,
+    private readonly eventPublisher: EventPublisherService,
   ) {}
 
   // إنشاء عميل جديد
@@ -94,6 +96,15 @@ export class CustomersService {
 
     // تسجيل في سجل التدقيق
     await this.createAuditLog('bill_customers', customer.id, 'create', null, customer);
+
+    // Publish customer created event for integration with other systems
+    await this.eventPublisher.publishCustomerCreated({
+      customerId: customer.id,
+      accountNo: customer.accountNo,
+      name: customer.name,
+      categoryId: customer.categoryId,
+      status: customer.status,
+    });
 
     return customer;
   }

@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException }
 import { PrismaService } from '../../database/prisma.service';
 import { InvoicesService } from '../invoices/invoices.service';
 import { SequenceService } from '../../common/utils/sequence.service';
+import { EventPublisherService } from '../events/event-publisher.service';
+import { AccountingService } from '../accounting/accounting.service';
 import { CreatePaymentDto, CancelPaymentDto, PaymentStatus } from './dto/payment.dto';
 
 @Injectable()
@@ -10,6 +12,8 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly invoicesService: InvoicesService,
     private readonly sequenceService: SequenceService,
+    private readonly eventPublisher: EventPublisherService,
+    private readonly accountingService: AccountingService,
   ) {}
 
   async create(dto: CreatePaymentDto) {
@@ -94,6 +98,26 @@ export class PaymentsService {
     if (dto.invoiceId) {
       await this.invoicesService.updatePaymentStatus(dto.invoiceId, dto.amount);
     }
+
+    // Publish payment received event for integration with other systems
+    await this.eventPublisher.publishPaymentReceived({
+      paymentId: payment.id,
+      paymentNo: payment.paymentNo,
+      customerId: payment.customerId,
+      invoiceId: payment.invoiceId || undefined,
+      amount: Number(payment.amount),
+      paymentMethod: payment.paymentMethod,
+    });
+
+    // Create double-entry journal entry for the payment (القيد المزدوج)
+    await this.accountingService.createPaymentEntry({
+      paymentId: payment.id,
+      paymentNo: payment.paymentNo,
+      customerId: payment.customerId,
+      invoiceNo: payment.invoice?.invoiceNo,
+      amount: Number(payment.amount),
+      paymentMethod: payment.paymentMethod as 'cash' | 'bank' | 'card' | 'online',
+    });
 
     return payment;
   }

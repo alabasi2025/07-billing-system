@@ -171,6 +171,10 @@ import {
                        class="p-1 text-orange-600 hover:bg-orange-50 rounded" title="الفواتير">
                       <i class="pi pi-file-edit"></i>
                     </a>
+                    <button (click)="deleteCustomer(customer)"
+                            class="p-1 text-red-600 hover:bg-red-50 rounded" title="حذف">
+                      <i class="pi pi-trash"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -348,6 +352,21 @@ export class CustomerListComponent implements OnInit {
       error: (err) => {
         alert('فشل في تفعيل العميل');
         console.error('Error activating customer:', err);
+      }
+    });
+  }
+
+  deleteCustomer(customer: Customer) {
+    if (!confirm(`هل أنت متأكد من حذف العميل "${customer.name}"؟\n\nملاحظة: سيتم إلغاء تفعيل العميل ولن يتم حذفه نهائياً (حذف ناعم).`)) return;
+
+    this.customersService.deleteCustomer(customer.id).subscribe({
+      next: () => {
+        this.loadCustomers();
+        this.loadStatistics();
+      },
+      error: (err) => {
+        alert(err.error?.message || 'فشل في حذف العميل');
+        console.error('Error deleting customer:', err);
       }
     });
   }

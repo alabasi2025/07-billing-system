@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, ConflictException }
 import { PrismaService } from '../../database/prisma.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { SequenceService } from '../../common/utils/sequence.service';
+import { EventPublisherService } from '../events/event-publisher.service';
+import { AccountingService } from '../accounting/accounting.service';
 import { GenerateInvoiceDto, CancelInvoiceDto, RebillInvoiceDto, InvoiceStatus } from './dto/invoice.dto';
 
 @Injectable()
@@ -12,6 +14,8 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly tariffsService: TariffsService,
     private readonly sequenceService: SequenceService,
+    private readonly eventPublisher: EventPublisherService,
+    private readonly accountingService: AccountingService,
   ) {}
 
   async generate(dto: GenerateInvoiceDto) {
@@ -180,6 +184,27 @@ export class InvoicesService {
     await this.prisma.billMeterReading.update({
       where: { id: reading.id },
       data: { isProcessed: true },
+    });
+
+    // Publish invoice created event for integration with other systems
+    await this.eventPublisher.publishInvoiceCreated({
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: invoice.customerId,
+      totalAmount: Number(invoice.totalAmount),
+      dueDate: invoice.dueDate,
+    });
+
+    // Create double-entry journal entry for the invoice (القيد المزدوج)
+    await this.accountingService.createInvoiceEntry({
+      invoiceId: invoice.id,
+      invoiceNo: invoice.invoiceNo,
+      customerId: invoice.customerId,
+      consumptionAmount: Number(invoice.consumptionAmount),
+      fixedCharges: Number(invoice.fixedCharges),
+      otherCharges: Number(invoice.otherCharges),
+      vatAmount: Number(invoice.vatAmount),
+      totalAmount: Number(invoice.totalAmount),
     });
 
     return invoice;
