@@ -350,7 +350,8 @@ export class POSComponent implements OnInit {
   ];
 
   ngOnInit() {
-    this.loading = false;
+    // تهيئة المكون
+    this.searching.set(false);
   }
 
   search() {

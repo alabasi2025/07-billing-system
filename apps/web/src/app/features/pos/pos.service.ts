@@ -95,7 +95,7 @@ export interface POSStatistics {
 })
 export class POSService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/pos`;
+  private apiUrl = `${environment.apiUrl}/api/v1/pos`;
 
   searchCustomer(params: {
     accountNo?: string;
