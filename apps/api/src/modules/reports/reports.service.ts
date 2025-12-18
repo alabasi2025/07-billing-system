@@ -694,4 +694,361 @@ export class ReportsService {
 
     return { data, totals };
   }
+
+  // تقرير إغلاق الصندوق اليومي
+  async getDailyCashClosingReport(params: { date: string; posTerminalId?: string }) {
+    const { date, posTerminalId } = params;
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      paymentDate: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+      status: 'confirmed',
+    };
+
+    if (posTerminalId) {
+      where.posTerminalId = posTerminalId;
+    }
+
+    // جلب جميع المدفوعات لليوم
+    const payments = await this.prisma.billPayment.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            accountNo: true,
+            name: true,
+          },
+        },
+        invoice: {
+          select: {
+            invoiceNo: true,
+          },
+        },
+      },
+      orderBy: { paymentDate: 'asc' },
+    });
+
+    // تجميع حسب طريقة الدفع
+    const byMethod: Record<string, { count: number; amount: number }> = {};
+    for (const payment of payments) {
+      const method = payment.paymentMethod;
+      if (!byMethod[method]) {
+        byMethod[method] = { count: 0, amount: 0 };
+      }
+      byMethod[method].count += 1;
+      byMethod[method].amount += Number(payment.amount);
+    }
+
+    // حساب الإجماليات
+    const totals = {
+      totalPayments: payments.length,
+      totalCash: byMethod['cash']?.amount || 0,
+      totalBank: (byMethod['bank']?.amount || 0) + (byMethod['card']?.amount || 0) + (byMethod['online']?.amount || 0),
+      totalCheque: byMethod['cheque']?.amount || 0,
+      grandTotal: payments.reduce((sum, p) => sum + Number(p.amount), 0),
+    };
+
+    // جلب الفواتير المصدرة في نفس اليوم
+    const invoicesIssued = await this.prisma.billInvoice.aggregate({
+      where: {
+        issuedAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        status: { notIn: ['cancelled', 'draft'] },
+      },
+      _count: true,
+      _sum: {
+        totalAmount: true,
+      },
+    });
+
+    return {
+      date,
+      payments: payments.map((p) => ({
+        paymentNo: p.paymentNo,
+        customer: p.customer,
+        invoiceNo: p.invoice?.invoiceNo,
+        amount: Number(p.amount),
+        paymentMethod: p.paymentMethod,
+        paymentDate: p.paymentDate,
+        receiptNo: p.receiptNo,
+      })),
+      byMethod: Object.entries(byMethod).map(([method, values]) => ({
+        method,
+        ...values,
+      })),
+      invoicesIssued: {
+        count: invoicesIssued._count,
+        amount: Number(invoicesIssued._sum.totalAmount || 0),
+      },
+      totals,
+      closingBalance: {
+        openingBalance: 0, // يمكن جلبه من جلسة نقطة البيع
+        receipts: totals.grandTotal,
+        disbursements: 0,
+        closingBalance: totals.grandTotal,
+      },
+    };
+  }
+
+  // تقرير أعمار الذمم المدينة التفصيلي
+  async getDetailedAgingReport(params: { asOfDate?: string; categoryId?: string; minBalance?: number }) {
+    const { asOfDate, categoryId, minBalance = 0 } = params;
+
+    const referenceDate = asOfDate ? new Date(asOfDate) : new Date();
+
+    const where: any = {
+      status: { in: ['issued', 'partial', 'overdue'] },
+      balance: { gt: minBalance },
+    };
+
+    if (categoryId) {
+      where.customer = { categoryId };
+    }
+
+    const invoices = await this.prisma.billInvoice.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            accountNo: true,
+            name: true,
+            phone: true,
+            category: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ customer: { accountNo: 'asc' } }, { dueDate: 'asc' }],
+    });
+
+    // تجميع حسب العميل مع تفصيل أعمار الذمم
+    const customerData: Record<string, {
+      customer: any;
+      current: number;
+      days1to30: number;
+      days31to60: number;
+      days61to90: number;
+      days90plus: number;
+      total: number;
+      invoices: any[];
+    }> = {};
+
+    for (const invoice of invoices) {
+      const customerId = invoice.customerId;
+      const daysOverdue = Math.max(
+        0,
+        Math.floor((referenceDate.getTime() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24))
+      );
+      const balance = Number(invoice.balance);
+
+      if (!customerData[customerId]) {
+        customerData[customerId] = {
+          customer: invoice.customer,
+          current: 0,
+          days1to30: 0,
+          days31to60: 0,
+          days61to90: 0,
+          days90plus: 0,
+          total: 0,
+          invoices: [],
+        };
+      }
+
+      // تصنيف حسب العمر
+      if (daysOverdue <= 0) {
+        customerData[customerId].current += balance;
+      } else if (daysOverdue <= 30) {
+        customerData[customerId].days1to30 += balance;
+      } else if (daysOverdue <= 60) {
+        customerData[customerId].days31to60 += balance;
+      } else if (daysOverdue <= 90) {
+        customerData[customerId].days61to90 += balance;
+      } else {
+        customerData[customerId].days90plus += balance;
+      }
+
+      customerData[customerId].total += balance;
+      customerData[customerId].invoices.push({
+        invoiceNo: invoice.invoiceNo,
+        billingPeriod: invoice.billingPeriod,
+        totalAmount: Number(invoice.totalAmount),
+        paidAmount: Number(invoice.paidAmount),
+        balance,
+        dueDate: invoice.dueDate,
+        daysOverdue,
+      });
+    }
+
+    const data = Object.values(customerData);
+
+    // حساب الإجماليات
+    const totals = data.reduce(
+      (acc, item) => ({
+        current: acc.current + item.current,
+        days1to30: acc.days1to30 + item.days1to30,
+        days31to60: acc.days31to60 + item.days31to60,
+        days61to90: acc.days61to90 + item.days61to90,
+        days90plus: acc.days90plus + item.days90plus,
+        total: acc.total + item.total,
+        customerCount: acc.customerCount + 1,
+        invoiceCount: acc.invoiceCount + item.invoices.length,
+      }),
+      { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90plus: 0, total: 0, customerCount: 0, invoiceCount: 0 }
+    );
+
+    // حساب النسب المئوية
+    const percentages = {
+      current: totals.total > 0 ? Math.round((totals.current / totals.total) * 100) : 0,
+      days1to30: totals.total > 0 ? Math.round((totals.days1to30 / totals.total) * 100) : 0,
+      days31to60: totals.total > 0 ? Math.round((totals.days31to60 / totals.total) * 100) : 0,
+      days61to90: totals.total > 0 ? Math.round((totals.days61to90 / totals.total) * 100) : 0,
+      days90plus: totals.total > 0 ? Math.round((totals.days90plus / totals.total) * 100) : 0,
+    };
+
+    return {
+      asOfDate: referenceDate.toISOString().split('T')[0],
+      data,
+      totals,
+      percentages,
+    };
+  }
+
+  // كشف حساب العميل التفصيلي
+  async getCustomerStatement(params: {
+    customerId: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    const { customerId, fromDate, toDate } = params;
+
+    // جلب بيانات العميل
+    const customer = await this.prisma.billCustomer.findUnique({
+      where: { id: customerId },
+      include: {
+        category: { select: { name: true } },
+      },
+    });
+
+    if (!customer) {
+      throw new Error('العميل غير موجود');
+    }
+
+    // تحديد نطاق التاريخ
+    const dateFilter: any = {};
+    if (fromDate) dateFilter.gte = new Date(fromDate);
+    if (toDate) dateFilter.lte = new Date(toDate);
+
+    // جلب الفواتير
+    const invoiceWhere: any = { customerId };
+    if (fromDate || toDate) {
+      invoiceWhere.issuedAt = dateFilter;
+    }
+
+    const invoices = await this.prisma.billInvoice.findMany({
+      where: invoiceWhere,
+      orderBy: { issuedAt: 'asc' },
+    });
+
+    // جلب المدفوعات
+    const paymentWhere: any = { customerId };
+    if (fromDate || toDate) {
+      paymentWhere.paymentDate = dateFilter;
+    }
+
+    const payments = await this.prisma.billPayment.findMany({
+      where: paymentWhere,
+      orderBy: { paymentDate: 'asc' },
+    });
+
+    // دمج وترتيب الحركات
+    const transactions: any[] = [];
+
+    for (const invoice of invoices) {
+      transactions.push({
+        date: invoice.issuedAt,
+        type: 'invoice',
+        referenceNo: invoice.invoiceNo,
+        description: `فاتورة ${invoice.billingPeriod}`,
+        debit: Number(invoice.totalAmount),
+        credit: 0,
+        consumption: Number(invoice.consumption),
+      });
+    }
+
+    for (const payment of payments) {
+      transactions.push({
+        date: payment.paymentDate,
+        type: 'payment',
+        referenceNo: payment.paymentNo,
+        description: `دفعة - ${payment.paymentMethod}`,
+        debit: 0,
+        credit: Number(payment.amount),
+        receiptNo: payment.receiptNo,
+      });
+    }
+
+    // ترتيب حسب التاريخ
+    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // حساب الرصيد المتراكم
+    let runningBalance = 0;
+    const transactionsWithBalance = transactions.map((t) => {
+      runningBalance += t.debit - t.credit;
+      return {
+        ...t,
+        balance: runningBalance,
+      };
+    });
+
+    // حساب الإجماليات
+    const totals = {
+      totalInvoiced: invoices.reduce((sum, i) => sum + Number(i.totalAmount), 0),
+      totalPaid: payments.reduce((sum, p) => sum + Number(p.amount), 0),
+      totalConsumption: invoices.reduce((sum, i) => sum + Number(i.consumption), 0),
+      invoiceCount: invoices.length,
+      paymentCount: payments.length,
+      currentBalance: runningBalance,
+    };
+
+    // حساب متوسط الاستهلاك
+    const avgConsumption = invoices.length > 0
+      ? Math.round(totals.totalConsumption / invoices.length)
+      : 0;
+
+    return {
+      customer: {
+        id: customer.id,
+        accountNo: customer.accountNo,
+        name: customer.name,
+        phone: customer.phone,
+        address: customer.address,
+        category: customer.category?.name,
+        status: customer.status,
+      },
+      period: {
+        from: fromDate || 'البداية',
+        to: toDate || 'الآن',
+      },
+      transactions: transactionsWithBalance,
+      totals,
+      statistics: {
+        avgConsumption,
+        avgMonthlyBill: invoices.length > 0 ? Math.round(totals.totalInvoiced / invoices.length) : 0,
+        collectionRate: totals.totalInvoiced > 0
+          ? Math.round((totals.totalPaid / totals.totalInvoiced) * 100)
+          : 0,
+      },
+    };
+  }
 }

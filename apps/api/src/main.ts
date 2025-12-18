@@ -5,6 +5,7 @@
 
 import { Logger, ValidationPipe, LogLevel } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app/app.module';
 
 // Custom JSON Logger for production
@@ -100,11 +101,68 @@ async function bootstrap() {
     }),
   );
 
+  // Swagger Configuration
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('نظام فوترة الكهرباء - Electricity Billing System API')
+    .setDescription(`
+## وصف النظام
+نظام متكامل لإدارة فواتير الكهرباء والعملاء والمدفوعات.
+
+## المميزات الرئيسية
+- إدارة العملاء وتصنيفاتهم
+- إدارة العدادات والقراءات
+- إصدار الفواتير وحساب الاستهلاك
+- تسجيل المدفوعات ونقاط البيع
+- إدارة الديون وخطط السداد
+- التقارير والإحصائيات
+
+## المصادقة
+يستخدم النظام JWT للمصادقة. يجب إرسال التوكن في هيدر Authorization.
+    `)
+    .setVersion('1.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'أدخل التوكن الخاص بك',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
+    .addTag('العملاء - Customers', 'إدارة العملاء وتصنيفاتهم')
+    .addTag('العدادات - Meters', 'إدارة العدادات والقراءات')
+    .addTag('الفواتير - Invoices', 'إصدار وإدارة الفواتير')
+    .addTag('المدفوعات - Payments', 'تسجيل وإدارة المدفوعات')
+    .addTag('نقاط البيع - POS', 'إدارة نقاط البيع والجلسات')
+    .addTag('الديون - Debts', 'إدارة الديون وخطط السداد')
+    .addTag('التقارير - Reports', 'التقارير والإحصائيات')
+    .addTag('الإعدادات - Settings', 'إعدادات النظام')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    customSiteTitle: 'نظام الفوترة - API Documentation',
+    customfavIcon: 'https://nestjs.com/img/logo-small.svg',
+    customCss: `
+      .swagger-ui .topbar { display: none }
+      .swagger-ui .info .title { font-size: 2rem; }
+    `,
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+      filter: true,
+      showRequestDuration: true,
+    },
+  });
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
   const logger = new Logger('Bootstrap');
   logger.log(`🚀 Billing API is running on: http://localhost:${port}`);
+  logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
   logger.log(`📚 API endpoints available at: http://localhost:${port}/api/v1`);
 }
 

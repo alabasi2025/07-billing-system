@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Param } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 
@@ -210,6 +210,68 @@ export class ReportsController {
       fromDate,
       toDate,
       status,
+    });
+
+    return {
+      success: true,
+      data: report,
+    };
+  }
+
+  @Get('daily-cash-closing')
+  @ApiOperation({ summary: 'تقرير إغلاق الصندوق اليومي' })
+  @ApiQuery({ name: 'date', required: true, description: 'تاريخ التقرير (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'posTerminalId', required: false, description: 'معرف نقطة البيع' })
+  async getDailyCashClosingReport(
+    @Query('date') date: string,
+    @Query('posTerminalId') posTerminalId?: string,
+  ) {
+    const report = await this.service.getDailyCashClosingReport({
+      date,
+      posTerminalId,
+    });
+
+    return {
+      success: true,
+      data: report,
+    };
+  }
+
+  @Get('detailed-aging')
+  @ApiOperation({ summary: 'تقرير أعمار الذمم المدينة التفصيلي' })
+  @ApiQuery({ name: 'asOfDate', required: false, description: 'تاريخ التقرير' })
+  @ApiQuery({ name: 'categoryId', required: false, description: 'تصنيف العملاء' })
+  @ApiQuery({ name: 'minBalance', required: false, description: 'الحد الأدنى للرصيد' })
+  async getDetailedAgingReport(
+    @Query('asOfDate') asOfDate?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('minBalance') minBalance?: string,
+  ) {
+    const report = await this.service.getDetailedAgingReport({
+      asOfDate,
+      categoryId,
+      minBalance: minBalance ? parseFloat(minBalance) : undefined,
+    });
+
+    return {
+      success: true,
+      data: report,
+    };
+  }
+
+  @Get('customer-statement/:customerId')
+  @ApiOperation({ summary: 'كشف حساب العميل التفصيلي' })
+  @ApiQuery({ name: 'fromDate', required: false, description: 'تاريخ البداية' })
+  @ApiQuery({ name: 'toDate', required: false, description: 'تاريخ النهاية' })
+  async getCustomerStatement(
+    @Param('customerId') customerId: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.service.getCustomerStatement({
+      customerId,
+      fromDate,
+      toDate,
     });
 
     return {
