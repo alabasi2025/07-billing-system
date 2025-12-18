@@ -85,6 +85,8 @@ model BillCustomer {
   contacts    BillCustomerContact[]
   components  BillCustomerComponent[]
   componentHistory BillComponentHistory[]
+  installmentPlans BillInstallmentPlan[]
+  disconnectionOrders BillDisconnectionOrder[]
 
   @@index([categoryId])
   @@index([status])
@@ -198,6 +200,7 @@ model BillMeter {
   meterType  BillMeterType      @relation(fields: [meterTypeId], references: [id])
   readings   BillMeterReading[]
   complaints BillComplaint[]
+  disconnectionOrders BillDisconnectionOrder[]
 
   @@index([customerId])
   @@index([meterTypeId])
@@ -283,15 +286,19 @@ model BillInvoice {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
+  installmentPlanId String?   @map("installment_plan_id") @db.Uuid
+
   customer   BillCustomer      @relation(fields: [customerId], references: [id])
   items      BillInvoiceItem[]
   payments   BillPayment[]
   complaints BillComplaint[]
+  installmentPlan BillInstallmentPlan? @relation("InstallmentPlanInvoices", fields: [installmentPlanId], references: [id])
 
   @@index([customerId])
   @@index([billingPeriod])
   @@index([status])
   @@index([dueDate])
+  @@index([installmentPlanId])
   @@map("bill_invoices")
 }
 
@@ -596,4 +603,84 @@ model BillSubsidyQuota {
   @@index([programId])
   @@index([year, month])
   @@map("bill_subsidy_quotas")
+}
+
+// ==================== خطط التقسيط ====================
+model BillInstallmentPlan {
+  id                String   @id @default(uuid()) @db.Uuid
+  planNo            String   @unique @map("plan_no") @db.VarChar(20)
+  customerId        String   @map("customer_id") @db.Uuid
+  totalAmount       Decimal  @map("total_amount") @db.Decimal(15, 2)
+  downPayment       Decimal  @default(0) @map("down_payment") @db.Decimal(15, 2)
+  remainingAmount   Decimal  @map("remaining_amount") @db.Decimal(15, 2)
+  numberOfInstallments Int   @map("number_of_installments")
+  installmentAmount Decimal  @map("installment_amount") @db.Decimal(15, 2)
+  startDate         DateTime @map("start_date")
+  endDate           DateTime @map("end_date")
+  status            String   @default("active") @db.VarChar(20) // active, completed, cancelled, defaulted
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  approvedAt        DateTime? @map("approved_at")
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  customer     BillCustomer @relation(fields: [customerId], references: [id])
+  installments BillInstallment[]
+  invoices     BillInvoice[] @relation("InstallmentPlanInvoices")
+
+  @@index([customerId])
+  @@index([status])
+  @@map("bill_installment_plans")
+}
+
+// ==================== أقساط خطة التقسيط ====================
+model BillInstallment {
+  id            String    @id @default(uuid()) @db.Uuid
+  planId        String    @map("plan_id") @db.Uuid
+  installmentNo Int       @map("installment_no")
+  dueDate       DateTime  @map("due_date")
+  amount        Decimal   @db.Decimal(15, 2)
+  paidAmount    Decimal   @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  paidDate      DateTime? @map("paid_date")
+  status        String    @default("pending") @db.VarChar(20) // pending, paid, overdue, cancelled
+  paymentId     String?   @map("payment_id") @db.Uuid
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  plan BillInstallmentPlan @relation(fields: [planId], references: [id])
+
+  @@unique([planId, installmentNo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("bill_installments")
+}
+
+// ==================== أوامر الفصل والتوصيل ====================
+model BillDisconnectionOrder {
+  id              String    @id @default(uuid()) @db.Uuid
+  orderNo         String    @unique @map("order_no") @db.VarChar(20)
+  customerId      String    @map("customer_id") @db.Uuid
+  meterId         String?   @map("meter_id") @db.Uuid
+  orderType       String    @map("order_type") @db.VarChar(20) // disconnection, reconnection
+  reason          String    @db.VarChar(100) // non_payment, customer_request, violation, maintenance
+  reasonDetails   String?   @map("reason_details") @db.Text
+  outstandingAmount Decimal? @map("outstanding_amount") @db.Decimal(15, 2)
+  scheduledDate   DateTime  @map("scheduled_date")
+  executedDate    DateTime? @map("executed_date")
+  executedBy      String?   @map("executed_by") @db.Uuid
+  status          String    @default("pending") @db.VarChar(20) // pending, scheduled, executed, cancelled
+  cancelReason    String?   @map("cancel_reason") @db.Text
+  reconnectionFee Decimal?  @map("reconnection_fee") @db.Decimal(15, 2)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  customer BillCustomer @relation(fields: [customerId], references: [id])
+  meter    BillMeter?   @relation(fields: [meterId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderType])
+  @@map("bill_disconnection_orders")
 }

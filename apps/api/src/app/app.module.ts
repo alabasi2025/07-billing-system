@@ -15,6 +15,8 @@ import { PaymentsModule } from '../modules/payments/payments.module';
 import { ComplaintsModule } from '../modules/complaints/complaints.module';
 import { ReportsModule } from '../modules/reports/reports.module';
 import { SubscriptionRequestsModule } from '../modules/subscription-requests/subscription-requests.module';
+import { InstallmentsModule } from '../modules/installments/installments.module';
+import { DisconnectionsModule } from '../modules/disconnections/disconnections.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { SubscriptionRequestsModule } from '../modules/subscription-requests/sub
     ComplaintsModule,
     ReportsModule,
     SubscriptionRequestsModule,
+    InstallmentsModule,
+    DisconnectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
