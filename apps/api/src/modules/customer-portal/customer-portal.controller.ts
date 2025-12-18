@@ -10,9 +10,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CustomerPortalService } from './customer-portal.service';
 import { CreateServiceRequestDto, UpdateServiceRequestDto } from './dto/customer-portal.dto';
 
+@ApiTags('بوابة العملاء')
 @Controller('api/v1/portal')
 export class CustomerPortalController {
   constructor(private readonly service: CustomerPortalService) {}

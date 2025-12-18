@@ -9,9 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { MeterReadingsService } from './meter-readings.service';
 import { CreateMeterReadingDto, BulkUploadReadingsDto } from './dto/meter-reading.dto';
 
+@ApiTags('قراءات العدادات')
 @Controller('api/v1/readings')
 export class MeterReadingsController {
   constructor(private readonly service: MeterReadingsService) {}

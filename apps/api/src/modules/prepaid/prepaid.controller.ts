@@ -9,9 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { PrepaidService } from './prepaid.service';
 import { CreatePrepaidTokenDto, VerifyTokenDto } from './dto/prepaid.dto';
 
+@ApiTags('الدفع المسبق')
 @Controller('api/v1/prepaid')
 export class PrepaidController {
   constructor(private readonly service: PrepaidService) {}

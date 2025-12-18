@@ -9,9 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto, CancelPaymentDto } from './dto/payment.dto';
 
+@ApiTags('المدفوعات')
 @Controller('api/v1/payments')
 export class PaymentsController {
   constructor(private readonly service: PaymentsService) {}

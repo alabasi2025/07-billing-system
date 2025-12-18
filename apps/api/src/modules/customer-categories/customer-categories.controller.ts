@@ -11,15 +11,20 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CustomerCategoriesService } from './customer-categories.service';
 import { CreateCustomerCategoryDto, UpdateCustomerCategoryDto } from './dto/customer-category.dto';
 
+@ApiTags('فئات العملاء')
 @Controller('api/v1/customer-categories')
 export class CustomerCategoriesController {
   constructor(private readonly service: CustomerCategoriesService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'إنشاء فئة عميل جديدة' })
+  @ApiResponse({ status: 201, description: 'تم إنشاء الفئة بنجاح' })
+  @ApiResponse({ status: 400, description: 'بيانات غير صالحة' })
   async create(@Body() dto: CreateCustomerCategoryDto) {
     const category = await this.service.create(dto);
     return {
@@ -30,6 +35,12 @@ export class CustomerCategoriesController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'جلب جميع فئات العملاء' })
+  @ApiQuery({ name: 'page', required: false, description: 'رقم الصفحة' })
+  @ApiQuery({ name: 'limit', required: false, description: 'عدد العناصر في الصفحة' })
+  @ApiQuery({ name: 'search', required: false, description: 'نص البحث' })
+  @ApiQuery({ name: 'isActive', required: false, description: 'فلترة حسب الحالة' })
+  @ApiResponse({ status: 200, description: 'قائمة فئات العملاء' })
   async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -50,6 +61,8 @@ export class CustomerCategoriesController {
   }
 
   @Get('active')
+  @ApiOperation({ summary: 'جلب الفئات النشطة فقط' })
+  @ApiResponse({ status: 200, description: 'قائمة الفئات النشطة' })
   async getActiveCategories() {
     const categories = await this.service.getActiveCategories();
     return {
@@ -59,6 +72,10 @@ export class CustomerCategoriesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'جلب فئة عميل بالمعرف' })
+  @ApiParam({ name: 'id', description: 'معرف الفئة (UUID)' })
+  @ApiResponse({ status: 200, description: 'بيانات الفئة' })
+  @ApiResponse({ status: 404, description: 'الفئة غير موجودة' })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     const category = await this.service.findOne(id);
     return {
@@ -68,6 +85,10 @@ export class CustomerCategoriesController {
   }
 
   @Get('code/:code')
+  @ApiOperation({ summary: 'جلب فئة عميل بالكود' })
+  @ApiParam({ name: 'code', description: 'كود الفئة' })
+  @ApiResponse({ status: 200, description: 'بيانات الفئة' })
+  @ApiResponse({ status: 404, description: 'الفئة غير موجودة' })
   async findByCode(@Param('code') code: string) {
     const category = await this.service.findByCode(code);
     return {
@@ -77,6 +98,10 @@ export class CustomerCategoriesController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'تحديث فئة عميل' })
+  @ApiParam({ name: 'id', description: 'معرف الفئة (UUID)' })
+  @ApiResponse({ status: 200, description: 'تم تحديث الفئة بنجاح' })
+  @ApiResponse({ status: 404, description: 'الفئة غير موجودة' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCustomerCategoryDto,
@@ -91,6 +116,10 @@ export class CustomerCategoriesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'حذف فئة عميل' })
+  @ApiParam({ name: 'id', description: 'معرف الفئة (UUID)' })
+  @ApiResponse({ status: 200, description: 'تم حذف الفئة بنجاح' })
+  @ApiResponse({ status: 404, description: 'الفئة غير موجودة' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.service.remove(id);
     return {

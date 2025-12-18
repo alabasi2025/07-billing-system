@@ -10,9 +10,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto, UpdateContractDto, TerminateContractDto } from './dto/contract.dto';
 
+@ApiTags('العقود')
 @Controller('api/v1/contracts')
 export class ContractsController {
   constructor(private readonly service: ContractsService) {}

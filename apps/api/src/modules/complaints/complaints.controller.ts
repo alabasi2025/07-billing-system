@@ -10,9 +10,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ComplaintsService } from './complaints.service';
 import { CreateComplaintDto, UpdateComplaintDto, ResolveComplaintDto } from './dto/complaint.dto';
 
+@ApiTags('الشكاوى')
 @Controller('api/v1/complaints')
 export class ComplaintsController {
   constructor(private readonly service: ComplaintsService) {}

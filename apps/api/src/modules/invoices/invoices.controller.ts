@@ -9,9 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
 import { GenerateInvoiceDto, CancelInvoiceDto, RebillInvoiceDto, BatchBillingDto } from './dto/invoice.dto';
 
+@ApiTags('الفواتير')
 @Controller('api/v1/invoices')
 export class InvoicesController {
   constructor(private readonly service: InvoicesService) {}

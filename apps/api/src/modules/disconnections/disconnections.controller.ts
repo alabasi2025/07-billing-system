@@ -9,9 +9,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { DisconnectionsService } from './disconnections.service';
 import { CreateDisconnectionOrderDto, ExecuteOrderDto, CancelOrderDto } from './dto/disconnection.dto';
 
+@ApiTags('الفصل والتوصيل')
 @Controller('api/v1/disconnections')
 export class DisconnectionsController {
   constructor(private readonly service: DisconnectionsService) {}

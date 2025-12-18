@@ -349,7 +349,9 @@ export class POSComponent implements OnInit {
     { label: 'محفظة إلكترونية', value: 'mobile' }
   ];
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.loading = false;
+  }
 
   search() {
     const hasParams = Object.values(this.searchParams).some(v => v.trim());

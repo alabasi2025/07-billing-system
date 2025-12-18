@@ -1,9 +1,7 @@
-/* Tailwind CSS */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind CSS v4 */
+@import "tailwindcss";
 
-/* PrimeNG Icons */
+/* PrimeIcons */
 @import "primeicons/primeicons.css";
 
 /* RTL Support */
@@ -68,4 +66,17 @@ body {
 
 .toast-info {
   background-color: #3b82f6 !important;
+}
+
+/* PrimeNG RTL fixes */
+.p-component {
+  direction: rtl;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  text-align: right;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  text-align: right;
 }

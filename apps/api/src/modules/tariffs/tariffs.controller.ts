@@ -11,9 +11,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TariffsService } from './tariffs.service';
 import { CreateTariffDto, UpdateTariffDto } from './dto/tariff.dto';
 
+@ApiTags('التعرفات')
 @Controller('api/v1/tariffs')
 export class TariffsController {
   constructor(private readonly service: TariffsService) {}

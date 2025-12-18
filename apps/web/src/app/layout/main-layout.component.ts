@@ -11,101 +11,85 @@ import { MessageService } from 'primeng/api';
   providers: [MessageService],
   template: `
     <p-toast position="top-left" />
-    <div class="min-h-screen bg-gray-100" dir="rtl">
+    <div class="app-container" dir="rtl">
       <!-- Sidebar -->
-      <aside class="fixed inset-y-0 right-0 w-64 bg-blue-900 text-white shadow-lg z-50">
-        <div class="p-4 border-b border-blue-800">
-          <h1 class="text-xl font-bold flex items-center gap-2">
-            <i class="pi pi-bolt text-yellow-400"></i>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h1 class="logo">
+            <i class="pi pi-bolt logo-icon"></i>
             نظام فوترة الكهرباء
           </h1>
         </div>
-        <nav class="mt-4">
-          <a routerLink="/dashboard" routerLinkActive="bg-blue-800" 
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-home ml-3"></i>
+        <nav class="sidebar-nav">
+          <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-home"></i>
             <span>لوحة التحكم</span>
           </a>
-          <a routerLink="/customers" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-users ml-3"></i>
+          <a routerLink="/customers" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-users"></i>
             <span>العملاء</span>
           </a>
-          <a routerLink="/meters" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-gauge ml-3"></i>
+          <a routerLink="/meters" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-gauge"></i>
             <span>العدادات</span>
           </a>
-          <a routerLink="/readings" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-chart-line ml-3"></i>
+          <a routerLink="/readings" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-chart-line"></i>
             <span>القراءات</span>
           </a>
-          <a routerLink="/invoices" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-file-edit ml-3"></i>
+          <a routerLink="/invoices" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-file-edit"></i>
             <span>الفواتير</span>
           </a>
-          <a routerLink="/payments" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-wallet ml-3"></i>
+          <a routerLink="/payments" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-wallet"></i>
             <span>المدفوعات</span>
           </a>
-          <a routerLink="/reports" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-chart-bar ml-3"></i>
+          <a routerLink="/reports" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-chart-bar"></i>
             <span>التقارير</span>
           </a>
-          <a routerLink="/pos" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-shopping-cart ml-3"></i>
+          <a routerLink="/pos" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-shopping-cart"></i>
             <span>نقاط البيع</span>
           </a>
-          <a routerLink="/pos-terminals" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-desktop ml-3"></i>
+          <a routerLink="/pos-terminals" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-desktop"></i>
             <span>إدارة نقاط البيع</span>
           </a>
-          <a routerLink="/debts" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-exclamation-triangle ml-3"></i>
+          <a routerLink="/debts" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-exclamation-triangle"></i>
             <span>إدارة الديون</span>
           </a>
-          <a routerLink="/payment-plans" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-calendar ml-3"></i>
+          <a routerLink="/payment-plans" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-calendar"></i>
             <span>خطط السداد</span>
           </a>
-          <a routerLink="/settings" routerLinkActive="bg-blue-800"
-             class="flex items-center px-4 py-3 hover:bg-blue-800 transition-colors">
-            <i class="pi pi-cog ml-3"></i>
+          <a routerLink="/settings" routerLinkActive="active" class="nav-link">
+            <i class="pi pi-cog"></i>
             <span>الإعدادات</span>
           </a>
         </nav>
       </aside>
 
       <!-- Main Content -->
-      <main class="mr-64 min-h-screen">
+      <main class="main-content">
         <!-- Header -->
-        <header class="bg-white shadow-sm sticky top-0 z-40">
-          <div class="px-6 py-4 flex items-center justify-between">
-            <h2 class="text-xl font-semibold text-gray-800">{{ pageTitle }}</h2>
-            <div class="flex items-center gap-4">
-              <button class="p-2 hover:bg-gray-100 rounded-full">
-                <i class="pi pi-bell text-gray-600"></i>
-              </button>
-              <div class="flex items-center gap-2">
-                <span class="text-gray-700">مدير النظام</span>
-                <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white">
-                  م
-                </div>
-              </div>
+        <header class="main-header">
+          <h2 class="page-title">{{ pageTitle }}</h2>
+          <div class="header-actions">
+            <button class="notification-btn">
+              <i class="pi pi-bell"></i>
+            </button>
+            <div class="user-info">
+              <span class="user-name">مدير النظام</span>
+              <div class="user-avatar">م</div>
             </div>
           </div>
         </header>
 
         <!-- Page Content -->
-        <div class="p-6">
+        <div class="page-content">
           <router-outlet></router-outlet>
         </div>
       </main>
@@ -114,6 +98,157 @@ import { MessageService } from 'primeng/api';
   styles: [`
     :host {
       display: block;
+    }
+    
+    .app-container {
+      min-height: 100vh;
+      background-color: #f5f5f5;
+      direction: rtl;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 256px;
+      background: linear-gradient(180deg, #1e3a5f 0%, #0d2137 100%);
+      color: white;
+      box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .logo {
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+    
+    .logo-icon {
+      color: #fbbf24;
+      font-size: 24px;
+    }
+    
+    .sidebar-nav {
+      padding: 10px 0;
+    }
+    
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      border-right: 3px solid transparent;
+    }
+    
+    .nav-link:hover {
+      background-color: rgba(255,255,255,0.1);
+      color: white;
+    }
+    
+    .nav-link.active {
+      background-color: rgba(255,255,255,0.15);
+      color: white;
+      border-right-color: #3b82f6;
+    }
+    
+    .nav-link i {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+    
+    /* Main Content Styles */
+    .main-content {
+      margin-right: 256px;
+      min-height: 100vh;
+    }
+    
+    .main-header {
+      background: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .page-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0;
+    }
+    
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .notification-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: #f3f4f6;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+    
+    .notification-btn:hover {
+      background: #e5e7eb;
+    }
+    
+    .notification-btn i {
+      color: #6b7280;
+      font-size: 18px;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .user-name {
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .page-content {
+      padding: 24px;
     }
   `]
 })

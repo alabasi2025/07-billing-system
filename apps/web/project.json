@@ -55,7 +55,7 @@
       "continuous": true,
       "executor": "@angular/build:dev-server",
       "options": {
-        "allowedHosts": ["all"]
+        "allowedHosts": ["all", "4200-i7b8ngt4yzmtiscsrbl3j-a9a29cbf.manusvm.computer", ".manusvm.computer"]
       },
       "configurations": {
         "production": {

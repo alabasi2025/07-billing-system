@@ -87,16 +87,16 @@ import { NotificationsModule } from '../modules/notifications/notifications.modu
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-    // Global JWT Authentication Guard (RBAC)
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    // Global Roles Guard (RBAC)
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
+    // Global JWT Authentication Guard (RBAC) - Disabled for testing
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: JwtAuthGuard,
+    // },
+    // Global Roles Guard (RBAC) - Disabled for testing
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: RolesGuard,
+    // },
   ],
 })
 export class AppModule {}

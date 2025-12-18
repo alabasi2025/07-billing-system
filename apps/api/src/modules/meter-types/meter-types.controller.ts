@@ -11,9 +11,11 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { MeterTypesService } from './meter-types.service';
 import { CreateMeterTypeDto, UpdateMeterTypeDto } from './dto/meter-type.dto';
 
+@ApiTags('أنواع العدادات')
 @Controller('api/v1/meter-types')
 export class MeterTypesController {
   constructor(private readonly service: MeterTypesService) {}
